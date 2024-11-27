@@ -1,0 +1,266 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "name": "Person",
+      "isDefault": false,
+      "location": {
+        "filename": "file:///C:/Users/Ethan/Documents/GitHub/deno-doc-introspector/person.ts",
+        "line": 1,
+        "col": 0,
+        "byteIndex": 0
+      },
+      "declarationKind": "export",
+      "kind": "class",
+      "classDef": {
+        "isAbstract": false,
+        "constructors": [
+          {
+            "accessibility": "public",
+            "hasBody": true,
+            "name": "constructor",
+            "params": [
+              {
+                "accessibility": "public",
+                "kind": "identifier",
+                "name": "name",
+                "optional": false,
+                "tsType": {
+                  "repr": "string",
+                  "kind": "keyword",
+                  "keyword": "string"
+                }
+              },
+              {
+                "accessibility": "public",
+                "kind": "identifier",
+                "name": "age",
+                "optional": false,
+                "tsType": {
+                  "repr": "number",
+                  "kind": "keyword",
+                  "keyword": "number"
+                }
+              }
+            ],
+            "location": {
+              "filename": "file:///C:/Users/Ethan/Documents/GitHub/deno-doc-introspector/person.ts",
+              "line": 5,
+              "col": 2,
+              "byteIndex": 78
+            }
+          }
+        ],
+        "properties": [
+          {
+            "tsType": {
+              "repr": "string",
+              "kind": "keyword",
+              "keyword": "string"
+            },
+            "readonly": false,
+            "accessibility": "public",
+            "optional": true,
+            "isAbstract": false,
+            "isStatic": false,
+            "name": "school",
+            "location": {
+              "filename": "file:///C:/Users/Ethan/Documents/GitHub/deno-doc-introspector/person.ts",
+              "line": 2,
+              "col": 2,
+              "byteIndex": 24
+            }
+          },
+          {
+            "tsType": {
+              "repr": "string",
+              "kind": "keyword",
+              "keyword": "string"
+            },
+            "readonly": false,
+            "accessibility": "public",
+            "optional": true,
+            "isAbstract": false,
+            "isStatic": false,
+            "name": "address",
+            "location": {
+              "filename": "file:///C:/Users/Ethan/Documents/GitHub/deno-doc-introspector/person.ts",
+              "line": 3,
+              "col": 2,
+              "byteIndex": 50
+            }
+          }
+        ],
+        "indexSignatures": [],
+        "methods": [
+          {
+            "accessibility": null,
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": false,
+            "name": "info",
+            "kind": "getter",
+            "functionDef": {
+              "params": [],
+              "returnType": {
+                "repr": "string",
+                "kind": "keyword",
+                "keyword": "string"
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": []
+            },
+            "location": {
+              "filename": "file:///C:/Users/Ethan/Documents/GitHub/deno-doc-introspector/person.ts",
+              "line": 10,
+              "col": 2,
+              "byteIndex": 157
+            }
+          },
+          {
+            "accessibility": "public",
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": false,
+            "name": "study",
+            "kind": "method",
+            "functionDef": {
+              "params": [],
+              "returnType": {
+                "repr": "void",
+                "kind": "keyword",
+                "keyword": "void"
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": []
+            },
+            "location": {
+              "filename": "file:///C:/Users/Ethan/Documents/GitHub/deno-doc-introspector/person.ts",
+              "line": 14,
+              "col": 2,
+              "byteIndex": 238
+            }
+          }
+        ],
+        "extends": null,
+        "implements": [],
+        "typeParams": [],
+        "superTypeParams": []
+      }
+    },
+    {
+      "name": "Scientist",
+      "isDefault": false,
+      "location": {
+        "filename": "file:///C:/Users/Ethan/Documents/GitHub/deno-doc-introspector/scientist.ts",
+        "line": 3,
+        "col": 0,
+        "byteIndex": 41
+      },
+      "declarationKind": "export",
+      "kind": "class",
+      "classDef": {
+        "isAbstract": false,
+        "constructors": [
+          {
+            "accessibility": "public",
+            "hasBody": true,
+            "name": "constructor",
+            "params": [
+              {
+                "kind": "identifier",
+                "name": "name",
+                "optional": false,
+                "tsType": {
+                  "repr": "string",
+                  "kind": "keyword",
+                  "keyword": "string"
+                }
+              },
+              {
+                "kind": "identifier",
+                "name": "age",
+                "optional": false,
+                "tsType": {
+                  "repr": "number",
+                  "kind": "keyword",
+                  "keyword": "number"
+                }
+              },
+              {
+                "accessibility": "public",
+                "kind": "identifier",
+                "name": "field",
+                "optional": false,
+                "tsType": {
+                  "repr": "string",
+                  "kind": "keyword",
+                  "keyword": "string"
+                }
+              }
+            ],
+            "location": {
+              "filename": "file:///C:/Users/Ethan/Documents/GitHub/deno-doc-introspector/scientist.ts",
+              "line": 4,
+              "col": 2,
+              "byteIndex": 84
+            }
+          }
+        ],
+        "properties": [],
+        "indexSignatures": [],
+        "methods": [
+          {
+            "accessibility": "public",
+            "optional": false,
+            "isAbstract": false,
+            "isStatic": false,
+            "name": "research",
+            "kind": "method",
+            "functionDef": {
+              "params": [],
+              "returnType": {
+                "repr": "void",
+                "kind": "keyword",
+                "keyword": "void"
+              },
+              "hasBody": true,
+              "isAsync": false,
+              "isGenerator": false,
+              "typeParams": []
+            },
+            "location": {
+              "filename": "file:///C:/Users/Ethan/Documents/GitHub/deno-doc-introspector/scientist.ts",
+              "line": 12,
+              "col": 2,
+              "byteIndex": 208
+            }
+          }
+        ],
+        "extends": "Person",
+        "implements": [],
+        "typeParams": [],
+        "superTypeParams": []
+      }
+    },
+    {
+      "name": "Person",
+      "location": {
+        "filename": "file:///C:/Users/Ethan/Documents/GitHub/deno-doc-introspector/scientist.ts",
+        "line": 1,
+        "col": 0,
+        "byteIndex": 0
+      },
+      "declarationKind": "private",
+      "kind": "import",
+      "importDef": {
+        "src": "file:///C:/Users/Ethan/Documents/GitHub/deno-doc-introspector/person.ts",
+        "imported": "Person"
+      }
+    }
+  ]
+}
