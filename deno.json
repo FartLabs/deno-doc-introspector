@@ -1,0 +1,5 @@
+{
+  "tasks": {
+    "example": "deno doc --json person.ts > person.json"
+  }
+}
