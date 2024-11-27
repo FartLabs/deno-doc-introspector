@@ -1,22 +1,6 @@
 import type { DocNode, DocNodeKind } from "@deno/doc";
 
-export function findNode(
-  nodes: DocNode[],
-  query: DocNodeQuery,
-): DocNode | undefined {
-  return nodes.find((node) => check(node, query));
-}
-
-export function walkNodes(
-  nodes: DocNode[],
-  callback: (node: DocNode) => void,
-): void {
-  for (const node of nodes) {
-    callback(node);
-  }
-}
-
-export function check(node: DocNode, query: DocNodeQuery): boolean {
+export function checkNode(node: DocNode, query: DocNodeQuery): boolean {
   if (query.kind !== undefined && node.kind !== query.kind) {
     return false;
   }
@@ -32,3 +16,14 @@ export interface DocNodeQuery {
   kind?: DocNodeKind;
   name?: string;
 }
+
+export function isDocNodeOf<T extends DocNodeKind | undefined>(
+  node: DocNode,
+  kind: T,
+): node is DocNodeOf<T> {
+  return kind === undefined || node.kind === kind;
+}
+
+export type DocNodeOf<TKind extends DocNodeKind | undefined> = TKind extends
+  undefined ? DocNode
+  : Extract<DocNode, { kind: TKind }>;
