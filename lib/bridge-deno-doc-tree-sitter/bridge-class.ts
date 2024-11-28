@@ -1,21 +1,5 @@
-import type { DocNode, DocNodeClass } from "@deno/doc";
+import type { DocNodeClass } from "@deno/doc";
 import { findCaptureStrings, NamedCapture, Tree } from "#/lib/tree-sitter.ts";
-
-/**
- * makePatternByDocNode generates a Tree-Sitter query pattern that matches the
- * given DocNode.
- */
-export function makePatternByDocNode(docNode: DocNode): string {
-  switch (docNode.kind) {
-    case "class": {
-      return makePatternByDocNodeClass(docNode);
-    }
-
-    default: {
-      throw new Error(`Unsupported DocNode kind: ${docNode.kind}`);
-    }
-  }
-}
 
 export const groupTypeIdentifier = "type_identifier";
 export const groupPropertyIdentifier = "property_identifier";

@@ -8,7 +8,7 @@ import {
   groupPublicFieldDefinition,
   groupTypeAnnotation,
   groupTypeIdentifier,
-} from "./deno-doc-tree-sitter-bridge.ts";
+} from "./bridge-class.ts";
 import { docNodes } from "./data.ts";
 
 const parser = await parserFromWasm(typescript);
