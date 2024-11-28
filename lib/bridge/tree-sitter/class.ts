@@ -1,5 +1,5 @@
 import type { DocNodeClass } from "@deno/doc";
-import type { NamedCapture, Tree } from "#/lib/tree-sitter.ts";
+import type { Capture, NamedCapture, Tree } from "#/lib/tree-sitter.ts";
 import { findCaptureStrings } from "#/lib/tree-sitter.ts";
 
 export const groupTypeIdentifier = "type_identifier";
@@ -12,19 +12,23 @@ export function introspectClassByDocNodeClass(
   tree: Tree,
   docNode: DocNodeClass,
 ): TreeSitterClass {
-  const captures = tree.rootNode.query(makePatternByDocNodeClass(docNode));
+  const captures: Capture[] = tree.rootNode
+    .query(makePatternByDocNodeClass(docNode));
   return {
     extends: [], // TODO: Introspect extends.
     name: docNode.name,
     properties: captures
-      .map(({ captures: namedCaptures }: { captures: NamedCapture[] }) =>
-        introspectPropertyByCaptures(namedCaptures)
+      .map(({ captures: namedCaptures }: { captures: NamedCapture[] }, i) =>
+        // TODO: Introspect constructor via separate capture group.
+        introspectPropertyByCaptures(namedCaptures, "body", i)
       ),
   };
 }
 
 export function introspectPropertyByCaptures(
   namedCaptures: NamedCapture[],
+  section: TreeSitterPropertySection,
+  index: number,
 ): TreeSitterProperty {
   const parsedCaptures = findCaptureStringsByDocNodeClass(namedCaptures);
   const propertyIdentifier = parsedCaptures.get(groupPropertyIdentifier);
@@ -49,6 +53,8 @@ export function introspectPropertyByCaptures(
     name: propertyIdentifier,
     type: typeAnnotation,
     optional: hasQuestionToken,
+    section,
+    index,
   };
 }
 
@@ -116,4 +122,8 @@ export interface TreeSitterProperty {
   name: string;
   type: string;
   optional: boolean;
+  section: TreeSitterPropertySection;
+  index: number;
 }
+
+export type TreeSitterPropertySection = "body" | "constructor";
