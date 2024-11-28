@@ -1,5 +1,6 @@
 import type { DocNodeClass } from "@deno/doc";
-import { findCaptureStrings, NamedCapture, Tree } from "#/lib/tree-sitter.ts";
+import type { NamedCapture, Tree } from "#/lib/tree-sitter.ts";
+import { findCaptureStrings } from "#/lib/tree-sitter.ts";
 
 export const groupTypeIdentifier = "type_identifier";
 export const groupPropertyIdentifier = "property_identifier";
@@ -7,14 +8,57 @@ export const groupValue = "value";
 export const groupTypeAnnotation = "type_annotation";
 export const groupPublicFieldDefinition = "public_field_definition";
 
-export function findCaptureStringsByTreeClass(
+// TODO:
+// https://github.com/FartLabs/typescript-type-introspector/blob/ddb2dce0799d0bb0bc5f5b56f357cb41afb0e982/lib/introspector/introspector.ts#L14
+//
+export interface TreeSitterClass {
+  typeIdentifier: string;
+  propertyIdentifier: string;
+  typeAnnotation: string;
+  publicFieldDefinition: string;
+  value?: string;
+}
+
+export function findTreeSitterClassByDocNodeClass(
   tree: Tree,
   docNode: DocNodeClass,
-) {
-  return findCaptureStringsByDocNodeClass(
-    tree.rootNode.query(makePatternByDocNodeClass(docNode))?.at(0)
-      ?.captures ?? [] as NamedCapture[],
-  );
+): TreeSitterClass {
+  // TODO:
+  // https://github.com/FartLabs/typescript-type-introspector/blob/ddb2dce0799d0bb0bc5f5b56f357cb41afb0e982/lib/tree-sitter/tree-sitter-introspector.ts#L33
+  //
+
+  const captures = tree.rootNode.query(makePatternByDocNodeClass(docNode));
+  const namedCaptures = (captures?.flatMap(
+    ({ captures }: { captures: NamedCapture[] }) => captures,
+  ) ?? []) as NamedCapture[];
+  const parsedCaptures = findCaptureStringsByDocNodeClass(namedCaptures);
+  if (!parsedCaptures.has(groupTypeIdentifier)) {
+    throw new Error(`Failed to find type identifier for class ${docNode.name}`);
+  }
+
+  if (!parsedCaptures.has(groupPropertyIdentifier)) {
+    throw new Error(
+      `Failed to find property identifier for class ${docNode.name}`,
+    );
+  }
+
+  if (!parsedCaptures.has(groupTypeAnnotation)) {
+    throw new Error(`Failed to find type annotation for class ${docNode.name}`);
+  }
+
+  if (!parsedCaptures.has(groupPublicFieldDefinition)) {
+    throw new Error(
+      `Failed to find public field definition for class ${docNode.name}`,
+    );
+  }
+
+  return {
+    typeIdentifier: parsedCaptures.get(groupTypeIdentifier)!,
+    propertyIdentifier: parsedCaptures.get(groupPropertyIdentifier)!,
+    value: parsedCaptures.get(groupValue)!,
+    typeAnnotation: parsedCaptures.get(groupTypeAnnotation)!.slice(": ".length),
+    publicFieldDefinition: parsedCaptures.get(groupPublicFieldDefinition)!,
+  };
 }
 
 export function findCaptureStringsByDocNodeClass(

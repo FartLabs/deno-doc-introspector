@@ -2,13 +2,7 @@ import { assertEquals } from "@std/assert";
 import { parserFromWasm } from "deno-tree-sitter/main.js";
 import typescript from "common-tree-sitter-languages/typescript.js";
 import { findDocNode } from "#/introspector.ts";
-import {
-  findCaptureStringsByTreeClass,
-  groupPropertyIdentifier,
-  groupPublicFieldDefinition,
-  groupTypeAnnotation,
-  groupTypeIdentifier,
-} from "./bridge-class.ts";
+import { findTreeSitterClassByDocNodeClass } from "./bridge-class.ts";
 import { docNodes } from "./data.ts";
 
 const parser = await parserFromWasm(typescript);
@@ -25,15 +19,18 @@ const treePersonClass = parser.parse(
 );
 
 Deno.test("findCaptureStringsByTreeClass finds capture strings", () => {
-  const actual = findCaptureStringsByTreeClass(
+  const actual = findTreeSitterClassByDocNodeClass(
     treePersonClass,
     docNodePersonClass,
   );
-  const expected = new Map([
-    [groupPropertyIdentifier, "school"],
-    [groupPublicFieldDefinition, "public school?: string"],
-    [groupTypeAnnotation, ": string"],
-    [groupTypeIdentifier, "Person"],
-  ]);
-  assertEquals(actual, expected);
+  assertEquals(
+    actual,
+    {
+      propertyIdentifier: "school",
+      publicFieldDefinition: "public school?: string",
+      typeAnnotation: "string",
+      typeIdentifier: "Person",
+      value: undefined,
+    },
+  );
 });
