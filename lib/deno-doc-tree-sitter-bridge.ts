@@ -1,4 +1,5 @@
 import type { DocNode, DocNodeClass } from "@deno/doc";
+import { findCaptureStrings, NamedCapture } from "#/lib/tree-sitter.ts";
 
 /**
  * makePatternByDocNode generates a Tree-Sitter query pattern that matches the
@@ -22,34 +23,49 @@ export const groupValue = "value";
 export const groupTypeAnnotation = "type_annotation";
 export const groupPublicFieldDefinition = "public_field_definition";
 
+export function findCaptureStringsByDocNodeClass(
+  captures: NamedCapture[],
+): Map<string, string> {
+  return findCaptureStrings(
+    captures,
+    [
+      groupTypeIdentifier,
+      groupPropertyIdentifier,
+      groupValue,
+      groupTypeAnnotation,
+      groupPublicFieldDefinition,
+    ],
+  );
+}
+
 export function makePatternByDocNodeClass(docNode: DocNodeClass): string {
   return `(class_declaration
-    name: (type_identifier) @${groupTypeIdentifier}
-    (#eq? @${groupTypeIdentifier} "${docNode.name}")
-  
-    body: (class_body
-      [
-        (public_field_definition
-          (accessibility_modifier)*
-          name: (property_identifier) @${groupPropertyIdentifier}
-          type: (type_annotation)* @${groupTypeAnnotation}
-          value: (_)* @${groupValue}
-        ) @${groupPublicFieldDefinition}
-  
-        (method_definition
-          name: (property_identifier) @constructor-method
-          (#eq? @constructor-method "constructor")
-  
-          parameters: (formal_parameters
-            (required_parameter
-              (accessibility_modifier)*
-              pattern: (identifier) @${groupPropertyIdentifier}
-              type: (type_annotation)* @${groupTypeAnnotation}
-              value: (_)* @${groupValue}
-            ) @${groupPublicFieldDefinition}
-          )
+  name: (type_identifier) @${groupTypeIdentifier}
+  (#eq? @${groupTypeIdentifier} "${docNode.name}")
+
+  body: (class_body
+    [
+      (public_field_definition
+        (accessibility_modifier)*
+        name: (property_identifier) @${groupPropertyIdentifier}
+        type: (type_annotation)* @${groupTypeAnnotation}
+        value: (_)* @${groupValue}
+      ) @${groupPublicFieldDefinition}
+
+      (method_definition
+        name: (property_identifier) @constructor-method
+        (#eq? @constructor-method "constructor")
+
+        parameters: (formal_parameters
+          (required_parameter
+            (accessibility_modifier)*
+            pattern: (identifier) @${groupPropertyIdentifier}
+            type: (type_annotation)* @${groupTypeAnnotation}
+            value: (_)* @${groupValue}
+          ) @${groupPublicFieldDefinition}
         )
-      ]
-    )
-  )`;
+      )
+    ]
+  )
+)`;
 }

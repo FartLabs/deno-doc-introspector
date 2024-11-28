@@ -10,10 +10,20 @@ export interface Parser {
 }
 
 /**
- * queryRootNode queries the root node of a Tree Sitter tree with a given pattern.
+ * findCaptureStrings finds the strings of a capture in the list of captures.
  */
-export function queryRootNode(tree: Tree, pattern: string): Capture[] {
-  return tree.rootNode.query(pattern);
+export function findCaptureStrings(
+  captures: NamedCapture[],
+  captureNames: string[],
+): Map<string, string> {
+  return captureNames.reduce((result, captureName) => {
+    const captureString = findCaptureString(captures, captureName);
+    if (captureString !== undefined) {
+      result.set(captureName, captureString);
+    }
+
+    return result;
+  }, new Map<string, string>());
 }
 
 /**
