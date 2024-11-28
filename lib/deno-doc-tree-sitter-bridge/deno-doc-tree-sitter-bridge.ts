@@ -1,5 +1,5 @@
 import type { DocNode, DocNodeClass } from "@deno/doc";
-import { findCaptureStrings, NamedCapture } from "#/lib/tree-sitter.ts";
+import { findCaptureStrings, NamedCapture, Tree } from "#/lib/tree-sitter.ts";
 
 /**
  * makePatternByDocNode generates a Tree-Sitter query pattern that matches the
@@ -22,6 +22,16 @@ export const groupPropertyIdentifier = "property_identifier";
 export const groupValue = "value";
 export const groupTypeAnnotation = "type_annotation";
 export const groupPublicFieldDefinition = "public_field_definition";
+
+export function findCaptureStringsByTreeClass(
+  tree: Tree,
+  docNode: DocNodeClass,
+) {
+  return findCaptureStringsByDocNodeClass(
+    tree.rootNode.query(makePatternByDocNodeClass(docNode))?.at(0)
+      ?.captures ?? [] as NamedCapture[],
+  );
+}
 
 export function findCaptureStringsByDocNodeClass(
   captures: NamedCapture[],

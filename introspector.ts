@@ -8,7 +8,7 @@ export function findAll<TQuery extends DocNodeQuery>(
     .filter((node) => checkNode(node, query)) as DocNodeOf<TQuery["kind"]>[];
 }
 
-export function findNode<TQuery extends DocNodeQuery>(
+export function findDocNode<TQuery extends DocNodeQuery>(
   nodes: DocNode[],
   query: TQuery,
 ): DocNodeOf<TQuery["kind"]> | undefined {
