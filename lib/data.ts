@@ -1,9 +1,10 @@
+import { expandGlob } from "@std/fs";
 import type { DocNode } from "@deno/doc";
 import { doc } from "@deno/doc";
 
-export const files =
-  (await Array.fromAsync(Deno.readDir(new URL(import.meta.resolve("./data")))))
-    .filter((file) => file.isFile && file.name.endsWith(".ts"));
+export const files = await Array.fromAsync(
+  expandGlob(new URL(import.meta.resolve("./data/*.ts"))),
+);
 
 export const docNodes = new Map<string, DocNode[]>(
   await Promise.all(
