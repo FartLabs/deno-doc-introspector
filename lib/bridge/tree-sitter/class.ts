@@ -9,7 +9,7 @@ export const groupTypeAnnotation = "type_annotation";
 export const groupPublicFieldDefinition = "public_field_definition";
 export const groupConstructorMethod = "constructor_method";
 
-export function introspectClassByDocNodeClass(
+export function introspectTreeSitterClassByDocNodeClass(
   tree: Tree,
   docNode: DocNodeClass,
 ): TreeSitterClass {

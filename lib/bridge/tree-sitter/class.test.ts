@@ -3,7 +3,7 @@ import { parserFromWasm } from "deno-tree-sitter/main.js";
 import typescript from "common-tree-sitter-languages/typescript.js";
 import { findDocNode } from "#/lib/deno-doc.ts";
 import { docNodes } from "#/lib/data.ts";
-import { introspectClassByDocNodeClass } from "./class.ts";
+import { introspectTreeSitterClassByDocNodeClass } from "./class.ts";
 
 const parser = await parserFromWasm(typescript);
 
@@ -18,8 +18,8 @@ const treePersonClass = parser.parse(
   ),
 );
 
-Deno.test("introspectClassByDocNodeClass introspects class", () => {
-  const actual = introspectClassByDocNodeClass(
+Deno.test("introspectTreeSitterClassByDocNodeClass introspects class", () => {
+  const actual = introspectTreeSitterClassByDocNodeClass(
     treePersonClass,
     docNodePersonClass,
   );
