@@ -18,7 +18,7 @@ const treePersonClass = parser.parse(
   ),
 );
 
-Deno.test("findCaptureStringsByTreeClass finds capture strings", () => {
+Deno.test("introspectClassByDocNodeClass introspects class", () => {
   const actual = introspectClassByDocNodeClass(
     treePersonClass,
     docNodePersonClass,
@@ -47,15 +47,15 @@ Deno.test("findCaptureStringsByTreeClass finds capture strings", () => {
           name: "name",
           optional: false,
           type: "string",
-          section: "body",
-          index: 2,
+          section: "constructor",
+          index: 0,
         },
         {
           name: "age",
           optional: false,
           type: "number",
-          section: "body",
-          index: 3,
+          section: "constructor",
+          index: 1,
         },
       ],
     },

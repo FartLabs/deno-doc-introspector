@@ -1,7 +1,7 @@
 {
   "lock": false,
   "tasks": {
-    "test": "deno test --allow-import --allow-read --allow-env",
+    "test": "deno test --allow-import --allow-read --allow-env --allow-net",
     "outdated": "deno outdated --update --latest"
   },
   "imports": {

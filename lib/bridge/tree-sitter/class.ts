@@ -7,6 +7,7 @@ export const groupPropertyIdentifier = "property_identifier";
 export const groupValue = "value";
 export const groupTypeAnnotation = "type_annotation";
 export const groupPublicFieldDefinition = "public_field_definition";
+export const groupConstructorMethod = "constructor_method";
 
 export function introspectClassByDocNodeClass(
   tree: Tree,
@@ -18,57 +19,57 @@ export function introspectClassByDocNodeClass(
     extends: [], // TODO: Introspect extends.
     name: docNode.name,
     properties: captures
-      .map(({ captures: namedCaptures }: { captures: NamedCapture[] }, i) =>
-        // TODO: Introspect constructor via separate capture group.
-        introspectPropertyByCaptures(namedCaptures, "body", i)
-      ),
-  };
-}
+      .reduce((
+        { index, properties }: {
+          index: Record<TreeSitterPropertySection, number>;
+          properties: TreeSitterProperty[];
+        },
+        { captures: namedCaptures }: { captures: NamedCapture[] },
+      ) => {
+        const parsedCaptures = findCaptureStringsByDocNodeClass(namedCaptures);
+        const propertyIdentifier = parsedCaptures.get(groupPropertyIdentifier);
+        if (propertyIdentifier === undefined) {
+          throw new Error("Property identifier is not defined.");
+        }
 
-export function introspectPropertyByCaptures(
-  namedCaptures: NamedCapture[],
-  section: TreeSitterPropertySection,
-  index: number,
-): TreeSitterProperty {
-  const parsedCaptures = findCaptureStringsByDocNodeClass(namedCaptures);
-  const propertyIdentifier = parsedCaptures.get(groupPropertyIdentifier);
-  if (propertyIdentifier === undefined) {
-    throw new Error("Property identifier is not defined.");
-  }
+        const typeAnnotation = parsedCaptures.get(groupTypeAnnotation)
+          ?.slice(typeScriptTypeAnnotationPrefix.length);
+        if (typeAnnotation === undefined) {
+          throw new Error("Type annotation is not defined.");
+        }
 
-  const typeAnnotation = parsedCaptures.get(groupTypeAnnotation)?.slice(
-    typeScriptTypeAnnotationPrefix.length,
-  );
-  if (typeAnnotation === undefined) {
-    throw new Error("Type annotation is not defined.");
-  }
+        const fieldDefinition = parsedCaptures.get(groupPublicFieldDefinition);
+        if (fieldDefinition === undefined) {
+          throw new Error("Field definition is not defined.");
+        }
 
-  const fieldDefinition = parsedCaptures.get(groupPublicFieldDefinition);
-  if (fieldDefinition === undefined) {
-    throw new Error("Field definition is not defined.");
-  }
+        const isSectionConstructor = parsedCaptures.has(groupConstructorMethod);
+        const hasQuestionToken = checkHasQuestionToken(fieldDefinition);
+        properties.push({
+          name: propertyIdentifier,
+          type: typeAnnotation,
+          optional: hasQuestionToken,
+          section: isSectionConstructor ? "constructor" : "body",
+          index: isSectionConstructor ? index.constructor++ : index.body++,
+        });
 
-  const hasQuestionToken = checkHasQuestionToken(fieldDefinition);
-  return {
-    name: propertyIdentifier,
-    type: typeAnnotation,
-    optional: hasQuestionToken,
-    section,
-    index,
+        return { index, properties };
+      }, { index: { body: 0, constructor: 0 }, properties: [] }).properties,
   };
 }
 
 export function findCaptureStringsByDocNodeClass(
-  captures: NamedCapture[],
+  namedCaptures: NamedCapture[],
 ): Map<string, string> {
   return findCaptureStrings(
-    captures,
+    namedCaptures,
     [
       groupTypeIdentifier,
       groupPropertyIdentifier,
       groupValue,
       groupTypeAnnotation,
       groupPublicFieldDefinition,
+      groupConstructorMethod,
     ],
   );
 }
@@ -88,8 +89,8 @@ export function makePatternByDocNodeClass(docNode: DocNodeClass): string {
       ) @${groupPublicFieldDefinition}
 
       (method_definition
-        name: (property_identifier) @constructor-method
-        (#eq? @constructor-method "constructor")
+        name: (property_identifier) @${groupConstructorMethod}
+        (#eq? @${groupConstructorMethod} "constructor")
 
         parameters: (formal_parameters
           (required_parameter
