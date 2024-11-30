@@ -3,6 +3,9 @@ import type {
   DocNode,
   DocNodeEnum,
   DocNodeInterface,
+  DocNodeTypeAlias,
+  InterfacePropertyDef,
+  LiteralPropertyDef,
   TsTypeArrayDef,
   TsTypeConditionalDef,
   TsTypeDef,
@@ -12,7 +15,11 @@ import type {
   TsTypeMappedDef,
   TsTypeParenthesizedDef,
   TsTypeRestDef,
+  TsTypeThisDef,
+  TsTypeTupleDef,
   TsTypeTypeLiteralDef,
+  TsTypeTypeOperatorDef,
+  TsTypeTypeRefDef,
   TsTypeUnionDef,
 } from "@deno/doc";
 
@@ -30,12 +37,11 @@ export interface DocNodesToTypeBoxOptions {
   // TODO: Add option useStaticType.
 }
 
+// TODO: Rename to DenoDocToTypeBox.
 export class DocNodesToTypeBox {
   private typenames = new Set<string>();
-  private recursiveDeclaration:
-    | ts.TypeAliasDeclaration
-    | ts.InterfaceDeclaration
-    | null = null;
+  private recursiveDeclaration: DocNodeTypeAlias | DocNodeInterface | null =
+    null;
   private blockLevel = 0;
   private useImports = false;
   private useOptions = false;
@@ -52,18 +58,25 @@ export class DocNodesToTypeBox {
   }
 
   private findRecursiveParent(
-    decl: ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
-    node: ts.Node,
+    _recursiveTypeNode:
+      | DocNodeInterface
+      | DocNodeTypeAlias,
+    _node: DocNode | TsTypeDef | InterfacePropertyDef,
   ): boolean {
-    return (ts.isTypeReferenceNode(node) &&
-      decl.name.getText() === node.typeName.getText()) ||
-      node.getChildren().some((node) => this.findRecursiveParent(decl, node));
+    return false;
+
+    // TODO: Fix this.
+    // return (ts.isTypeReferenceNode(node) &&
+    //   recursiveTypeNode.name.getText() === node.typeName.getText()) ||
+    //   node.getChildren().some((node) => this.findRecursiveParent(recursiveTypeNode, node));
   }
 
-  private findRecursiveThis(node: ts.Node): boolean {
-    return node.getChildren().some((node) =>
-      ts.isThisTypeNode(node) || this.findRecursiveThis(node)
-    );
+  private findRecursiveThis(_node: DocNode | TsTypeDef): boolean {
+    return false;
+    // TODO: Fix this.
+    // return node.getChildren().some((node) =>
+    //   ts.isThisTypeNode(node) || this.findRecursiveThis(node)
+    // );
   }
 
   private findTypeName(node: ts.Node, name: string): boolean {
@@ -78,13 +91,17 @@ export class DocNodesToTypeBox {
   }
 
   private isRecursiveType(
-    decl: ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
+    recursiveTypeNode: DocNodeInterface | DocNodeTypeAlias,
   ) {
-    const check1 = ts.isTypeAliasDeclaration(decl)
-      ? [decl.type].some((node) => this.findRecursiveParent(decl, node))
-      : decl.members.some((node) => this.findRecursiveParent(decl, node));
-    const check2 = ts.isInterfaceDeclaration(decl) &&
-      this.findRecursiveThis(decl);
+    const check1 = recursiveTypeNode.kind === "typeAlias"
+      ? [recursiveTypeNode.typeAliasDef.tsType].some((node) =>
+        this.findRecursiveParent(recursiveTypeNode, node)
+      )
+      : recursiveTypeNode.interfaceDef.properties.some((node) =>
+        this.findRecursiveParent(recursiveTypeNode, node)
+      );
+    const check2 = recursiveTypeNode.kind === "interface" &&
+      this.findRecursiveThis(recursiveTypeNode);
     return check1 || check2;
   }
 
@@ -224,26 +241,26 @@ export class DocNodesToTypeBox {
     }
   }
 
-  private *propertySignature(
-    node: ts.PropertySignature,
-  ): IterableIterator<string> {
-    const [readonly, optional] = [
-      this.isReadonlyProperty(node),
-      this.isOptionalProperty(node),
-    ];
-    const options = this.resolveOptions(node);
-    const type_0 = this.collect(node.type);
-    const type_1 = this.injectOptions(type_0, options);
-    if (readonly && optional) {
-      return yield `${node.name.getText()}: Type.ReadonlyOptional(${type_1})`;
-    } else if (readonly) {
-      return yield `${node.name.getText()}: Type.Readonly(${type_1})`;
-    } else if (optional) {
-      return yield `${node.name.getText()}: Type.Optional(${type_1})`;
-    } else {
-      return yield `${node.name.getText()}: ${type_1}`;
-    }
-  }
+  // private *propertySignature(
+  //   node: ts.PropertySignature,
+  // ): IterableIterator<string> {
+  //   const [readonly, optional] = [
+  //     this.isReadonlyProperty(node),
+  //     this.isOptionalProperty(node),
+  //   ];
+  //   const options = this.resolveOptions(node);
+  //   const type_0 = this.collect(node.type);
+  //   const type_1 = this.injectOptions(type_0, options);
+  //   if (readonly && optional) {
+  //     return yield `${node.name.getText()}: Type.ReadonlyOptional(${type_1})`;
+  //   } else if (readonly) {
+  //     return yield `${node.name.getText()}: Type.Readonly(${type_1})`;
+  //   } else if (optional) {
+  //     return yield `${node.name.getText()}: Type.Optional(${type_1})`;
+  //   } else {
+  //     return yield `${node.name.getText()}: ${type_1}`;
+  //   }
+  // }
 
   private *arrayTypeNode(node: TsTypeArrayDef): IterableIterator<string> {
     const type = this.collect(node);
@@ -259,8 +276,10 @@ export class DocNodesToTypeBox {
   //   yield `{\n${statements}\n}`;
   // }
 
-  private *tupleTypeNode(node: ts.TupleTypeNode): IterableIterator<string> {
-    const types = node.elements.map((type) => this.collect(type)).join(",\n");
+  private *tupleTypeNode(node: TsTypeTupleDef): IterableIterator<string> {
+    const types = node.tuple
+      .map((type) => this.collect(type))
+      .join(",\n");
     yield `Type.Tuple([\n${types}\n])`;
   }
 
@@ -308,46 +327,46 @@ export class DocNodesToTypeBox {
     );
   }
 
-  private *methodSignature(node: ts.MethodSignature): IterableIterator<string> {
-    const parameters = node.parameters.map((
-      parameter,
-    ) => (parameter.dotDotDotToken !== undefined
-      ? `...Type.Rest(${this.collect(parameter)})`
-      : this.collect(parameter))
-    ).join(", ");
-    const returnType = node.type === undefined
-      ? `Type.Unknown()`
-      : this.collect(node.type);
-    yield `${node.name.getText()}: Type.Function([${parameters}], ${returnType})`;
-  }
+  // private *methodSignature(node: ts.MethodSignature): IterableIterator<string> {
+  //   const parameters = node.parameters.map((
+  //     parameter,
+  //   ) => (parameter.dotDotDotToken !== undefined
+  //     ? `...Type.Rest(${this.collect(parameter)})`
+  //     : this.collect(parameter))
+  //   ).join(", ");
+  //   const returnType = node.type === undefined
+  //     ? `Type.Unknown()`
+  //     : this.collect(node.type);
+  //   yield `${node.name.getText()}: Type.Function([${parameters}], ${returnType})`;
+  // }
 
-  private *templateLiteralTypeNode(node: ts.TemplateLiteralTypeNode) {
-    const collect = node.getChildren().map((node) => this.collect(node)).join(
-      "",
-    );
-    yield `Type.TemplateLiteral([${collect.slice(0, collect.length - 2)}])`;
-  }
+  // private *templateLiteralTypeNode(node: ts.TemplateLiteralTypeNode) {
+  //   const collect = node.getChildren().map((node) => this.collect(node)).join(
+  //     "",
+  //   );
+  //   yield `Type.TemplateLiteral([${collect.slice(0, collect.length - 2)}])`;
+  // }
 
-  private *templateLiteralTypeSpan(node: ts.TemplateLiteralTypeSpan) {
-    const collect = node.getChildren().map((node) => this.collect(node)).join(
-      ", ",
-    );
-    if (collect.length > 0) yield `${collect}`;
-  }
+  // private *templateLiteralTypeSpan(node: ts.TemplateLiteralTypeSpan) {
+  //   const collect = node.getChildren().map((node) => this.collect(node)).join(
+  //     ", ",
+  //   );
+  //   if (collect.length > 0) yield `${collect}`;
+  // }
 
-  private *templateHead(node: ts.TemplateHead) {
-    if (node.text.length > 0) yield `Type.Literal('${node.text}'), `;
-  }
+  // private *templateHead(node: ts.TemplateHead) {
+  //   if (node.text.length > 0) yield `Type.Literal('${node.text}'), `;
+  // }
 
-  private *templateMiddle(node: ts.TemplateMiddle) {
-    if (node.text.length > 0) yield `Type.Literal('${node.text}'), `;
-  }
+  // private *templateMiddle(node: ts.TemplateMiddle) {
+  //   if (node.text.length > 0) yield `Type.Literal('${node.text}'), `;
+  // }
 
-  private *templateTail(node: ts.TemplateTail) {
-    if (node.text.length > 0) yield `Type.Literal('${node.text}'), `;
-  }
+  // private *templateTail(node: ts.TemplateTail) {
+  //   if (node.text.length > 0) yield `Type.Literal('${node.text}'), `;
+  // }
 
-  private *thisTypeNode(_node: ts.ThisTypeNode) {
+  private *thisTypeNode(_node: TsTypeThisDef) {
     yield `This`;
   }
 
@@ -361,22 +380,23 @@ export class DocNodesToTypeBox {
   }
 
   private *typeOperatorNode(
-    node: ts.TypeOperatorNode,
+    node: TsTypeTypeOperatorDef,
   ): IterableIterator<string> {
-    if (node.operator === ts.SyntaxKind.KeyOfKeyword) {
-      const type = this.collect(node.type);
+    if (node.typeOperator.operator === "keyof") {
+      const type = this.collect(node.typeOperator.tsType);
       yield `Type.KeyOf(${type})`;
     }
-    if (node.operator === ts.SyntaxKind.ReadonlyKeyword) {
-      yield `Type.Readonly(${this.collect(node.type)})`;
+
+    if (node.typeOperator.operator === "readonly") {
+      yield `Type.Readonly(${this.collect(node.typeOperator.tsType)})`;
     }
   }
 
-  private *parameter(node: ts.ParameterDeclaration): IterableIterator<string> {
-    yield this.isOptionalParameter(node)
-      ? `Type.Optional(${this.collect(node.type)})`
-      : this.collect(node.type);
-  }
+  // private *parameter(node: ts.ParameterDeclaration): IterableIterator<string> {
+  //   yield this.isOptionalParameter(node)
+  //     ? `Type.Optional(${this.collect(node.type)})`
+  //     : this.collect(node.type);
+  // }
 
   private *functionTypeNode(
     node: TsTypeFnOrConstructorDef,
@@ -404,30 +424,28 @@ export class DocNodesToTypeBox {
   private *enumDeclaration(node: DocNodeEnum): IterableIterator<string> {
     this.useImports = true;
     const exports = node.declarationKind === "export" ? "export " : "";
-    const members = node.enumDef.members.map((member) => member.name).join(
-      ", ",
-    );
+    const members = node.enumDef.members
+      .map((member) => member.name)
+      .join(", ");
     const enumType = `${exports}enum Enum${node.name} { ${members} }`;
     const staticType =
-      `${exports}type ${node.name} = Static<typeof ${node.name.getText()}>`;
-    const type =
-      `${exports}const ${node.name} = Type.Enum(Enum${node.name.getText()})`;
+      `${exports}type ${node.name} = Static<typeof ${node.name}>`;
+    const type = `${exports}const ${node.name} = Type.Enum(Enum${node.name})`;
     yield [enumType, "", staticType, type].join("\n");
   }
 
   private propertiesFromTypeElementArray(
-    members: ts.NodeArray<ts.TypeElement>,
+    members: LiteralPropertyDef[],
   ): string {
-    const properties = members.filter((member) =>
-      !ts.isIndexSignatureDeclaration(member)
-    );
-    const indexers = members.filter((member) =>
-      ts.isIndexSignatureDeclaration(member)
-    );
-    const propertyCollect = properties.map((property) => this.collect(property))
+    const properties = members
+      .filter((member) => member.tsType?.kind !== "indexedAccess");
+    const indexers = members
+      .filter((member) => member.tsType?.kind === "indexedAccess");
+    const propertyCollect = properties
+      .map((property) => this.collect(property.tsType))
       .join(",\n");
     const indexer = indexers.length > 0
-      ? this.collect(indexers[indexers.length - 1])
+      ? this.collect(indexers[indexers.length - 1]?.tsType)
       : "";
     if (properties.length === 0 && indexer.length > 0) {
       return `{},\n{\nadditionalProperties: ${indexer}\n }`;
@@ -438,8 +456,12 @@ export class DocNodesToTypeBox {
     }
   }
 
-  private *typeLiteralNode(node: ts.TypeLiteralNode): IterableIterator<string> {
-    const members = this.propertiesFromTypeElementArray(node.members);
+  private *typeLiteralNode(
+    node: TsTypeTypeLiteralDef,
+  ): IterableIterator<string> {
+    const members = this.propertiesFromTypeElementArray(
+      node.typeLiteral.properties,
+    );
     yield* `Type.Object(${members})`;
   }
 
@@ -448,7 +470,10 @@ export class DocNodesToTypeBox {
   ): IterableIterator<string> {
     this.useImports = true;
     const isRecursiveType = this.isRecursiveType(node);
-    if (isRecursiveType) this.recursiveDeclaration = node;
+    if (isRecursiveType) {
+      this.recursiveDeclaration = node;
+    }
+
     const heritage = node.heritageClauses !== undefined
       ? node.heritageClauses.flatMap((node) => this.collect(node))
       : [];
@@ -504,7 +529,7 @@ export class DocNodesToTypeBox {
   }
 
   private *typeAliasDeclaration(
-    node: ts.TypeAliasDeclaration,
+    node: DocNodeTypeAlias,
   ): IterableIterator<string> {
     this.useImports = true;
     const isRecursiveType = this.isRecursiveType(node);
@@ -589,11 +614,11 @@ export class DocNodesToTypeBox {
     yield this.collect(node.parenthesized);
   }
 
-  private *propertyAccessExpression(
-    node: ts.PropertyAccessExpression,
-  ): IterableIterator<string> {
-    yield node.getText();
-  }
+  // private *propertyAccessExpression(
+  //   node: ts.PropertyAccessExpression,
+  // ): IterableIterator<string> {
+  //   yield node.getText();
+  // }
 
   private *restTypeNode(node: TsTypeRestDef): IterableIterator<string> {
     yield `...Type.Rest(${node.repr})`;
@@ -609,16 +634,20 @@ export class DocNodesToTypeBox {
     yield `Type.Extends(${checkType}, ${extendsType}, ${trueType}, ${falseType})`;
   }
 
-  private *isIndexSignatureDeclaration(node: ts.IndexSignatureDeclaration) {
-    yield this.collect(node.type);
-  }
+  // private *isIndexSignatureDeclaration(node: ts.IndexSignatureDeclaration) {
+  //   yield this.collect(node.type);
+  // }
 
   private *typeReferenceNode(
-    node: ts.TypeReferenceNode,
+    node: TsTypeTypeRefDef,
   ): IterableIterator<string> {
-    const name = node.typeName.getText();
-    const args = node.typeArguments
-      ? `(${node.typeArguments.map((type) => this.collect(type)).join(", ")})`
+    const name = node.typeRef.typeName;
+    const args = node.typeRef.typeParams !== undefined
+      ? `(${
+        node.typeRef.typeParams
+          .map((typeParam) => this.collect(typeParam))
+          .join(", ")
+      })`
       : "";
     if (name === "Date") return yield `Type.Date()`;
     if (name === "Uint8Array") return yield `Type.Uint8Array()`;
@@ -654,12 +683,12 @@ export class DocNodesToTypeBox {
       this.recursiveDeclaration !== null &&
       this.findRecursiveParent(this.recursiveDeclaration, node)
     ) return yield `This`;
-    if (
-      this.findTypeName(node.getSourceFile(), name) &&
-      args.length === 0
-    ) {
-      return yield `${name}${args}`;
-    }
+    // if (
+    //   this.findTypeName(node.getSourceFile(), name) &&
+    //   args.length === 0
+    // ) {
+    //   return yield `${name}${args}`;
+    // }
     if (name in globalThis) return yield `Type.Never()`;
     return yield `${name}${args}`;
   }
@@ -672,27 +701,27 @@ export class DocNodesToTypeBox {
     yield `Type.Literal(${node.repr})`;
   }
 
-  private *namedTupleMember(
-    node: ts.NamedTupleMember,
-  ): IterableIterator<string> {
-    yield* this.collect(node.type);
-  }
+  // private *namedTupleMember(
+  //   node: ts.NamedTupleMember,
+  // ): IterableIterator<string> {
+  //   yield* this.collect(node.type);
+  // }
 
-  private *moduleDeclaration(
-    node: ts.ModuleDeclaration,
-  ): IterableIterator<string> {
-    const exportSpecifier = this.isExport(node) ? "export " : "";
-    const moduleSpecifier = this.isNamespace(node) ? "namespace" : "module";
-    yield `${exportSpecifier}${moduleSpecifier} ${node.name.getText()} {`;
-    yield* this.visit(node.body);
-    yield `}`;
-  }
+  // private *moduleDeclaration(
+  //   node: ts.ModuleDeclaration,
+  // ): IterableIterator<string> {
+  //   const exportSpecifier = this.isExport(node) ? "export " : "";
+  //   const moduleSpecifier = this.isNamespace(node) ? "namespace" : "module";
+  //   yield `${exportSpecifier}${moduleSpecifier} ${node.name.getText()} {`;
+  //   yield* this.visit(node.body);
+  //   yield `}`;
+  // }
 
-  private *moduleBlock(node: ts.ModuleBlock): IterableIterator<string> {
-    for (const statement of node.statements) {
-      yield* this.visit(statement);
-    }
-  }
+  // private *moduleBlock(node: ts.ModuleBlock): IterableIterator<string> {
+  //   for (const statement of node.statements) {
+  //     yield* this.visit(statement);
+  //   }
+  // }
 
   private *functionDeclaration(
     _node: ts.FunctionDeclaration,
@@ -751,102 +780,74 @@ export class DocNodesToTypeBox {
       case "rest": {
         return yield* this.restTypeNode(node);
       }
-      default:
-        if (ts.isTupleTypeNode(node)) return yield* this.tupleTypeNode(node);
-        if (ts.isTemplateLiteralTypeNode(node)) {
-          return yield* this.templateLiteralTypeNode(node);
-        }
-        if (ts.isTemplateLiteralTypeSpan(node)) {
-          return yield* this.templateLiteralTypeSpan(node);
-        }
-        if (ts.isTemplateHead(node)) return yield* this.templateHead(node);
-        if (ts.isTemplateMiddle(node)) return yield* this.templateMiddle(node);
-        if (ts.isTemplateTail(node)) return yield* this.templateTail(node);
-        if (ts.isThisTypeNode(node)) return yield* this.thisTypeNode(node);
-        if (ts.isTypeAliasDeclaration(node)) {
-          return yield* this.typeAliasDeclaration(node);
-        }
-        if (ts.isTypeLiteralNode(node)) {
-          return yield* this.typeLiteralNode(node);
-        }
-        if (ts.isTypeOperatorNode(node)) {
-          return yield* this.typeOperatorNode(node);
-        }
-        if (ts.isTypeParameterDeclaration(node)) {
-          return yield* this.typeParameterDeclaration(node);
-        }
-        if (ts.isTypeReferenceNode(node)) {
-          return yield* this.typeReferenceNode(node);
-        }
-        if (ts.isSourceFile(node)) return yield* this.sourceFile(node);
-        if (node.kind === ts.SyntaxKind.ExportKeyword) return yield `export`;
-        if (node.kind === ts.SyntaxKind.KeyOfKeyword) {
-          return yield `Type.KeyOf()`;
-        }
-        if (node.kind === ts.SyntaxKind.NumberKeyword) {
-          return yield `Type.Number()`;
-        }
-        if (node.kind === ts.SyntaxKind.BigIntKeyword) {
-          return yield `Type.BigInt()`;
-        }
-        if (node.kind === ts.SyntaxKind.StringKeyword) {
-          return yield `Type.String()`;
-        }
-        if (node.kind === ts.SyntaxKind.SymbolKeyword) {
-          return yield `Type.Symbol()`;
-        }
-        if (node.kind === ts.SyntaxKind.BooleanKeyword) {
-          return yield `Type.Boolean()`;
-        }
-        if (node.kind === ts.SyntaxKind.UndefinedKeyword) {
-          return yield `Type.Undefined()`;
-        }
-        if (node.kind === ts.SyntaxKind.UnknownKeyword) {
-          return yield `Type.Unknown()`;
-        }
-        if (node.kind === ts.SyntaxKind.AnyKeyword) return yield `Type.Any()`;
-        if (node.kind === ts.SyntaxKind.NeverKeyword) {
-          return yield `Type.Never()`;
-        }
-        if (node.kind === ts.SyntaxKind.NullKeyword) return yield `Type.Null()`;
-        if (node.kind === ts.SyntaxKind.VoidKeyword) return yield `Type.Void()`;
-        if (node.kind === ts.SyntaxKind.EndOfFileToken) return;
-        if (node.kind === ts.SyntaxKind.SyntaxList) {
-          for (const child of node.getChildren()) {
-            yield* this.visit(child);
-          }
-          return;
-        }
-        console.warn("Unhandled:", ts.SyntaxKind[node.kind], node.getText());
-    }
-
-    if (node.kind === ts.SyntaxKind.ExportKeyword) return yield `export`;
-    if (node.kind === ts.SyntaxKind.KeyOfKeyword) return yield `Type.KeyOf()`;
-    if (node.kind === ts.SyntaxKind.NumberKeyword) return yield `Type.Number()`;
-    if (node.kind === ts.SyntaxKind.BigIntKeyword) return yield `Type.BigInt()`;
-    if (node.kind === ts.SyntaxKind.StringKeyword) return yield `Type.String()`;
-    if (node.kind === ts.SyntaxKind.SymbolKeyword) return yield `Type.Symbol()`;
-    if (node.kind === ts.SyntaxKind.BooleanKeyword) {
-      return yield `Type.Boolean()`;
-    }
-    if (node.kind === ts.SyntaxKind.UndefinedKeyword) {
-      return yield `Type.Undefined()`;
-    }
-    if (node.kind === ts.SyntaxKind.UnknownKeyword) {
-      return yield `Type.Unknown()`;
-    }
-    if (node.kind === ts.SyntaxKind.AnyKeyword) return yield `Type.Any()`;
-    if (node.kind === ts.SyntaxKind.NeverKeyword) return yield `Type.Never()`;
-    if (node.kind === ts.SyntaxKind.NullKeyword) return yield `Type.Null()`;
-    if (node.kind === ts.SyntaxKind.VoidKeyword) return yield `Type.Void()`;
-    if (node.kind === ts.SyntaxKind.EndOfFileToken) return;
-    if (node.kind === ts.SyntaxKind.SyntaxList) {
-      for (const child of node.getChildren()) {
-        yield* this.visit(child);
+      case "tuple": {
+        return yield* this.tupleTypeNode(node);
       }
-      return;
+      case "this": {
+        return yield* this.thisTypeNode(node);
+      }
+      case "typeAlias": {
+        return yield* this.typeAliasDeclaration(node);
+      }
+      case "typeLiteral": {
+        return yield* this.typeLiteralNode(node);
+      }
+      case "typeOperator": {
+        return yield* this.typeOperatorNode(node);
+      }
+      case "typeRef": {
+        return yield* this.typeReferenceNode(node);
+      }
+
+      default: {
+        // if (ts.isTypeParameterDeclaration(node)) {
+        //   return yield* this.typeParameterDeclaration(node);
+        // }
+        // if (ts.isSourceFile(node)) return yield* this.sourceFile(node);
+
+        // TODO: Fix.
+        // if (node.kind === ts.SyntaxKind.ExportKeyword) return yield `export`;
+        // if (node.kind === ts.SyntaxKind.KeyOfKeyword) {
+        //   return yield `Type.KeyOf()`;
+        // }
+        // if (node.kind === ts.SyntaxKind.NumberKeyword) {
+        //   return yield `Type.Number()`;
+        // }
+        // if (node.kind === ts.SyntaxKind.BigIntKeyword) {
+        //   return yield `Type.BigInt()`;
+        // }
+        // if (node.kind === ts.SyntaxKind.StringKeyword) {
+        //   return yield `Type.String()`;
+        // }
+        // if (node.kind === ts.SyntaxKind.SymbolKeyword) {
+        //   return yield `Type.Symbol()`;
+        // }
+        // if (node.kind === ts.SyntaxKind.BooleanKeyword) {
+        //   return yield `Type.Boolean()`;
+        // }
+        // if (node.kind === ts.SyntaxKind.UndefinedKeyword) {
+        //   return yield `Type.Undefined()`;
+        // }
+        // if (node.kind === ts.SyntaxKind.UnknownKeyword) {
+        //   return yield `Type.Unknown()`;
+        // }
+        // if (node.kind === ts.SyntaxKind.AnyKeyword) return yield `Type.Any()`;
+        // if (node.kind === ts.SyntaxKind.NeverKeyword) {
+        //   return yield `Type.Never()`;
+        // }
+        // if (node.kind === ts.SyntaxKind.NullKeyword) return yield `Type.Null()`;
+        // if (node.kind === ts.SyntaxKind.VoidKeyword) return yield `Type.Void()`;
+        // if (node.kind === ts.SyntaxKind.EndOfFileToken) return;
+        // if (node.kind === ts.SyntaxKind.SyntaxList) {
+        //   for (const child of node.getChildren()) {
+        //     yield* this.visit(child);
+        //   }
+        //   return;
+        // }
+        //
+        console.warn("Unhandled:", node);
+      }
     }
-    console.warn("Unhandled:", ts.SyntaxKind[node.kind], node.getText());
   }
 
   private importStatement(): string {
