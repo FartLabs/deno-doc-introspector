@@ -2,6 +2,7 @@
   "lock": false,
   "tasks": {
     "test": "deno test --allow-import --allow-read --allow-env --allow-net",
+    "get-tests": "deno run --allow-read --allow-write --allow-net tests.ts",
     "outdated": "deno outdated --update --latest"
   },
   "imports": {
@@ -10,5 +11,7 @@
     "@std/assert": "jsr:@std/assert@^1.0.8",
     "@std/fs": "jsr:@std/fs@^1.0.6",
     "typescript": "npm:typescript@^5.7.2"
-  }
+  },
+  "fmt": { "exclude": ["tests"] },
+  "lint": { "exclude": ["tests"] }
 }
