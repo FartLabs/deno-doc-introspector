@@ -1,4 +1,5 @@
 import type {
+  DeclarationKind,
   DocNode,
   DocNodeInterface,
   DocNodeTypeAlias,
@@ -123,19 +124,9 @@ function checkIsRecursiveType(
 //   return node.questionToken !== undefined;
 // }
 
-// function checkIsExport(
-//   node:
-//     | ts.InterfaceDeclaration
-//     | ts.TypeAliasDeclaration
-//     | ts.EnumDeclaration
-//     | ts.ModuleDeclaration,
-// ): boolean {
-//   return blockLevel === 0 &&
-//     (useExportsEverything ||
-//       (node.modifiers !== undefined &&
-//         node.modifiers.find((modifier) => modifier.getText() === "export") !==
-//           undefined));
-// }
+function checkIsExport(kind: DeclarationKind): boolean {
+  return kind === "export";
+}
 
 // function checkIsNamespace(node: ts.ModuleDeclaration) {
 //   return node.flags === ts.NodeFlags.Namespace;
@@ -264,9 +255,9 @@ function injectOptions(
   return type;
 }
 
-function* generateSourceFile(node: ts.SourceFile): IterableIterator<string> {
-  for (const next of node.getChildren()) {
-    yield* visitNode(next);
+function* generateSourceFile(nodes: DocNode[]): IterableIterator<string> {
+  for (const node of nodes) {
+    yield* visitNode(node);
   }
 }
 
@@ -505,8 +496,9 @@ function* generateTypeLiteralNode(
   yield* `Type.Object(${members})`;
 }
 
+// TODO: Implement.
 function* generateInterfaceDeclaration(
-  node: ts.InterfaceDeclaration,
+  node: DocNodeInterface,
 ): IterableIterator<string> {
   useImports = true;
   const isRecursiveType = checkIsRecursiveType(node);
@@ -514,17 +506,19 @@ function* generateInterfaceDeclaration(
     recursiveDeclaration = node;
   }
 
-  const heritage = node.heritageClauses !== undefined
-    ? node.heritageClauses.flatMap((node) => collectNode(node))
-    : [];
-  if (node.typeParameters) {
+  // const heritage = node.heritageClauses !== undefined
+  //   ? node.heritageClauses.flatMap((node) => collectNode(node))
+  //   : [];
+  if (node.interfaceDef.typeParams.length > 0) {
     useGenerics = true;
-    const exports = checkIsExport(node) ? "export " : "";
-    const identifier = resolveIdentifier(node);
-    const options = useIdentifiers
-      ? { ...resolveOptions(node), $id: identifier }
-      : { ...resolveOptions(node) };
-    const constraints = node.typeParameters.map((param) =>
+    const exports = checkIsExport(node.declarationKind) ? "export " : "";
+    // const identifier = resolveIdentifier(node);
+    // const options = useIdentifiers
+    //   ? { ...resolveOptions(node), $id: identifier }
+    //   : { ...resolveOptions(node) };
+
+    // TODO: Fix.
+    const constraints = node.interfaceDef.typeParams.map((param) =>
       `${collectNode(param)} extends TSchema`
     ).join(", ");
     const parameters = node.typeParameters.map((param) =>
@@ -812,106 +806,35 @@ function collectNode(node: DocNode | undefined): string {
  * visitNode generates the TypeBox representation of the TypeScript AST node.
  */
 function* visitNode(node: DocNode | undefined): IterableIterator<string> {
-  if (node === undefined) return;
-  if (ts.isArrayTypeNode(node)) return yield* generateArrayTypeNode(node);
-  if (ts.isBlock(node)) return yield* generateBlock(node);
-  if (ts.isClassDeclaration(node)) return yield* generateClassDeclaration(node);
-  if (ts.isConditionalTypeNode(node)) {
-    return yield* generateConditionalTypeNode(node);
-  }
-  if (ts.isConstructorTypeNode(node)) {
-    return yield* generateConstructorTypeNode(node);
-  }
-  if (ts.isEnumDeclaration(node)) return yield* generateEnumDeclaration(node);
-  if (ts.isExpressionWithTypeArguments(node)) {
-    return yield* generateExpressionWithTypeArguments(node);
-  }
-  if (ts.isFunctionDeclaration(node)) {
-    return yield* generateFunctionDeclaration(node);
-  }
-  if (ts.isFunctionTypeNode(node)) return yield* generateFunctionTypeNode(node);
-  if (ts.isHeritageClause(node)) return yield* generateHeritageClause(node);
-  if (ts.isIndexedAccessTypeNode(node)) {
-    return yield* generateIndexedAccessType(node);
-  }
-  if (ts.isIndexSignatureDeclaration(node)) {
-    return yield* isIndexSignatureDeclaration(node);
-  }
-  if (ts.isInterfaceDeclaration(node)) {
-    return yield* generateInterfaceDeclaration(node);
-  }
-  if (ts.isLiteralTypeNode(node)) return yield* generateLiteralTypeNode(node);
-  if (ts.isNamedTupleMember(node)) return yield* generateNamedTupleMember(node);
-  if (ts.isPropertySignature(node)) {
-    return yield* generatePropertySignature(node);
-  }
-  if (ts.isModuleDeclaration(node)) {
-    return yield* generateModuleDeclaration(node);
-  }
-  if (ts.isIdentifier(node)) return yield node.getText();
-  if (ts.isIntersectionTypeNode(node)) {
-    return yield* generateIntersectionTypeNode(node);
-  }
-  if (ts.isUnionTypeNode(node)) return yield* generateUnionTypeNode(node);
-  if (ts.isMappedTypeNode(node)) return yield* generateMappedTypeNode(node);
-  if (ts.isMethodSignature(node)) return yield* generateMethodSignature(node);
-  if (ts.isModuleBlock(node)) return yield* generateModuleBlock(node);
-  if (ts.isParameter(node)) return yield* generateParameter(node);
-  if (ts.isParenthesizedTypeNode(node)) {
-    return yield* generateParenthesizedTypeNode(node);
-  }
-  if (ts.isPropertyAccessExpression(node)) {
-    return yield* generatePropertyAccessExpression(node);
-  }
-  if (ts.isRestTypeNode(node)) return yield* generateRestTypeNode(node);
-  if (ts.isTupleTypeNode(node)) return yield* generateTupleTypeNode(node);
-  if (ts.isTemplateLiteralTypeNode(node)) {
-    return yield* generateTemplateLiteralTypeNode(node);
-  }
-  if (ts.isTemplateLiteralTypeSpan(node)) {
-    return yield* generateTemplateLiteralTypeSpan(node);
-  }
-  if (ts.isTemplateHead(node)) return yield* generateTemplateHead(node);
-  if (ts.isTemplateMiddle(node)) return yield* generateTemplateMiddle(node);
-  if (ts.isTemplateTail(node)) return yield* generateTemplateTail(node);
-  if (ts.isThisTypeNode(node)) return yield* generateThisTypeNode(node);
-  if (ts.isTypeAliasDeclaration(node)) {
-    return yield* generateTypeAliasDeclaration(node);
-  }
-  if (ts.isTypeLiteralNode(node)) return yield* generateTypeLiteralNode(node);
-  if (ts.isTypeOperatorNode(node)) return yield* generateTypeOperatorNode(node);
-  if (ts.isTypeParameterDeclaration(node)) {
-    return yield* generateTypeParameterDeclaration(node);
-  }
-  if (ts.isTypeReferenceNode(node)) return yield* TypeReferenceNode(node);
-  if (ts.isSourceFile(node)) return yield* generateSourceFile(node);
-  if (node.kind === ts.SyntaxKind.ExportKeyword) return yield `export`;
-  if (node.kind === ts.SyntaxKind.KeyOfKeyword) return yield `Type.KeyOf()`;
-  if (node.kind === ts.SyntaxKind.NumberKeyword) return yield `Type.Number()`;
-  if (node.kind === ts.SyntaxKind.BigIntKeyword) return yield `Type.BigInt()`;
-  if (node.kind === ts.SyntaxKind.StringKeyword) return yield `Type.String()`;
-  if (node.kind === ts.SyntaxKind.SymbolKeyword) return yield `Type.Symbol()`;
-  if (node.kind === ts.SyntaxKind.BooleanKeyword) {
-    return yield `Type.Boolean()`;
-  }
-  if (node.kind === ts.SyntaxKind.UndefinedKeyword) {
-    return yield `Type.Undefined()`;
-  }
-  if (node.kind === ts.SyntaxKind.UnknownKeyword) {
-    return yield `Type.Unknown()`;
-  }
-  if (node.kind === ts.SyntaxKind.AnyKeyword) return yield `Type.Any()`;
-  if (node.kind === ts.SyntaxKind.NeverKeyword) return yield `Type.Never()`;
-  if (node.kind === ts.SyntaxKind.NullKeyword) return yield `Type.Null()`;
-  if (node.kind === ts.SyntaxKind.VoidKeyword) return yield `Type.Void()`;
-  if (node.kind === ts.SyntaxKind.EndOfFileToken) return;
-  if (node.kind === ts.SyntaxKind.SyntaxList) {
-    for (const child of node.getChildren()) {
-      yield* visitNode(child);
-    }
+  if (node === undefined) {
     return;
   }
-  console.warn("Unhandled:", ts.SyntaxKind[node.kind], node.getText());
+
+  switch (node.kind) {
+    case "class": {
+      return yield* generateClassDeclaration(node);
+    }
+
+    case "function": {
+      return yield* generateFunctionDeclaration(node);
+    }
+
+    case "enum": {
+      return yield* generateEnumDeclaration(node);
+    }
+
+    case "typeAlias": {
+      return yield* generateTypeAliasDeclaration(node);
+    }
+
+    case "interface": {
+      return yield* generateInterfaceDeclaration(node);
+    }
+
+    default: {
+      throw new Error(`Unhandled node type: ${node.kind}`);
+    }
+  }
 }
 
 function makeImportStatement(): string {
