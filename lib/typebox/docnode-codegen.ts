@@ -2,10 +2,18 @@ import * as ts from "typescript";
 import type {
   DocNode,
   DocNodeEnum,
+  DocNodeInterface,
   TsTypeArrayDef,
   TsTypeConditionalDef,
   TsTypeDef,
+  TsTypeDefLiteral,
   TsTypeFnOrConstructorDef,
+  TsTypeIntersectionDef,
+  TsTypeMappedDef,
+  TsTypeParenthesizedDef,
+  TsTypeRestDef,
+  TsTypeTypeLiteralDef,
+  TsTypeUnionDef,
 } from "@deno/doc";
 
 export class TypeScriptToTypeBoxError extends Error {
@@ -242,33 +250,37 @@ export class DocNodesToTypeBox {
     yield `Type.Array(${type})`;
   }
 
-  private *block(node: ts.Block): IterableIterator<string> {
-    this.blockLevel += 1;
-    const statements = node.statements.map((statement) =>
-      this.collect(statement)
-    ).join("\n\n");
-    this.blockLevel -= 1;
-    yield `{\n${statements}\n}`;
-  }
+  // private *block(node: ts.Block): IterableIterator<string> {
+  //   this.blockLevel += 1;
+  //   const statements = node.statements.map((statement) =>
+  //     this.collect(statement)
+  //   ).join("\n\n");
+  //   this.blockLevel -= 1;
+  //   yield `{\n${statements}\n}`;
+  // }
 
   private *tupleTypeNode(node: ts.TupleTypeNode): IterableIterator<string> {
     const types = node.elements.map((type) => this.collect(type)).join(",\n");
     yield `Type.Tuple([\n${types}\n])`;
   }
 
-  private *unionTypeNode(node: ts.UnionTypeNode): IterableIterator<string> {
-    const types = node.types.map((type) => this.collect(type)).join(",\n");
+  private *unionTypeNode(node: TsTypeUnionDef): IterableIterator<string> {
+    const types = node.union
+      .map((type) => this.collect(type))
+      .join(",\n");
     yield `Type.Union([\n${types}\n])`;
   }
 
-  private *mappedTypeNode(node: ts.MappedTypeNode): IterableIterator<string> {
-    const K = this.collect(node.typeParameter);
-    const T = this.collect(node.type);
-    const C = this.collect(node.typeParameter.constraint);
-    const readonly = node.readonlyToken !== undefined;
-    const optional = node.questionToken !== undefined;
-    const readonlySubtractive = readonly && ts.isMinusToken(node.readonlyToken);
-    const optionalSubtractive = optional && ts.isMinusToken(node.questionToken);
+  private *mappedTypeNode(node: TsTypeMappedDef): IterableIterator<string> {
+    const K = this.collect(node.mappedType.typeParam.default);
+    const T = this.collect(node.mappedType.tsType);
+    const C = this.collect(node.mappedType.typeParam.constraint);
+    const readonly = node.mappedType.readonly !== undefined;
+    const optional = node.mappedType.optional !== undefined;
+    const isReadonlyTokenMinus = false; // TODO: Implement.
+    const isQuestionTokenMinus = false; // TODO: Implement.
+    const readonlySubtractive = readonly && isReadonlyTokenMinus;
+    const optionalSubtractive = optional && isQuestionTokenMinus;
     return yield (
       (readonly && optional)
         ? (
@@ -340,9 +352,11 @@ export class DocNodesToTypeBox {
   }
 
   private *intersectionTypeNode(
-    node: ts.IntersectionTypeNode,
+    node: TsTypeIntersectionDef,
   ): IterableIterator<string> {
-    const types = node.types.map((type) => this.collect(type)).join(",\n");
+    const types = node.intersection
+      .map((typeDef) => this.collect(typeDef))
+      .join(",\n");
     yield `Type.Intersect([\n${types}\n])`;
   }
 
@@ -365,15 +379,15 @@ export class DocNodesToTypeBox {
   }
 
   private *functionTypeNode(
-    node: ts.FunctionTypeNode,
+    node: TsTypeFnOrConstructorDef,
   ): IterableIterator<string> {
-    const parameters = node.parameters.map((
+    const parameters = node.fnOrConstructor.params.map((
       parameter,
-    ) => (parameter.dotDotDotToken !== undefined
-      ? `...Type.Rest(${this.collect(parameter)})`
-      : this.collect(parameter))
+    ) => (parameter.kind === "rest"
+      ? `...Type.Rest(${this.collect(parameter.tsType)})`
+      : this.collect(parameter.tsType))
     ).join(", ");
-    const returns = this.collect(node.type);
+    const returns = this.collect(node.fnOrConstructor.tsType);
     yield `Type.Function([${parameters}], ${returns})`;
   }
 
@@ -430,7 +444,7 @@ export class DocNodesToTypeBox {
   }
 
   private *interfaceDeclaration(
-    node: ts.InterfaceDeclaration,
+    node: DocNodeInterface,
   ): IterableIterator<string> {
     this.useImports = true;
     const isRecursiveType = this.isRecursiveType(node);
@@ -570,9 +584,9 @@ export class DocNodesToTypeBox {
   }
 
   private *parenthesizedTypeNode(
-    node: ts.ParenthesizedTypeNode,
+    node: TsTypeParenthesizedDef,
   ): IterableIterator<string> {
-    yield this.collect(node.type);
+    yield this.collect(node.parenthesized);
   }
 
   private *propertyAccessExpression(
@@ -581,8 +595,8 @@ export class DocNodesToTypeBox {
     yield node.getText();
   }
 
-  private *restTypeNode(node: ts.RestTypeNode): IterableIterator<string> {
-    yield `...Type.Rest(${node.type.getText()})`;
+  private *restTypeNode(node: TsTypeRestDef): IterableIterator<string> {
+    yield `...Type.Rest(${node.repr})`;
   }
 
   private *conditionalTypeNode(
@@ -650,10 +664,12 @@ export class DocNodesToTypeBox {
     return yield `${name}${args}`;
   }
 
-  private *literalTypeNode(node: ts.LiteralTypeNode): IterableIterator<string> {
-    const text = node.getText();
-    if (text === "null") return yield `Type.Null()`;
-    yield `Type.Literal(${node.getText()})`;
+  private *literalTypeNode(node: TsTypeDefLiteral): IterableIterator<string> {
+    if (node.repr === "null") {
+      return yield `Type.Null()`;
+    }
+
+    yield `Type.Literal(${node.repr})`;
   }
 
   private *namedTupleMember(
@@ -695,9 +711,14 @@ export class DocNodesToTypeBox {
   private *visit(
     node: DocNode | TsTypeDef | undefined,
   ): IterableIterator<string> {
-    if (node === undefined) return;
+    if (node === undefined) {
+      return;
+    }
 
-    if (node.kind === "array") return yield* this.arrayTypeNode(node);
+    // TODO: Refactor to switch-case statement.
+    if (node.kind === "array") {
+      return yield* this.arrayTypeNode(node);
+    }
     // if (ts.isBlock(node)) return yield* this.block(node); // TODO: Remove.
     // if (ts.isClassDeclaration(node)) return yield* this.classDeclaration(node); // TODO: Implement.
     if (node.kind === "conditional") {
@@ -706,49 +727,75 @@ export class DocNodesToTypeBox {
     if (node.kind === "fnOrConstructor" && node.fnOrConstructor.constructor) {
       return yield* this.constructorTypeNode(node);
     }
-
-    if (node.kind === "enum") return yield* this.enumDeclaration(node);
+    if (node.kind === "enum") {
+      return yield* this.enumDeclaration(node);
+    }
     // if (ts.isExpressionWithTypeArguments(node)) {
     //   return yield* this.expressionWithTypeArguments(node);
     // } // TODO: Remove.
-    if (ts.isFunctionDeclaration(node)) {
-      return yield* this.functionDeclaration(node);
+    // if (node.kind ==="function") {
+    //   return yield* this.functionDeclaration(node);
+    // } // TODO: Implement.
+    if (node.kind === "fnOrConstructor" && !node.fnOrConstructor.constructor) {
+      return yield* this.functionTypeNode(node);
     }
-    if (ts.isFunctionTypeNode(node)) return yield* this.functionTypeNode(node);
-    if (ts.isHeritageClause(node)) return yield* this.heritageClause(node);
-    if (ts.isIndexedAccessTypeNode(node)) {
-      return yield* this.indexedAccessType(node);
-    }
-    if (ts.isIndexSignatureDeclaration(node)) {
-      return yield* this.isIndexSignatureDeclaration(node);
-    }
-    if (ts.isInterfaceDeclaration(node)) {
+    // if (ts.isHeritageClause(node)) {
+    //   return yield* this.heritageClause(node);
+    // } // TODO: Fix.
+    // if (ts.isIndexedAccessTypeNode(node)) {
+    //   return yield* this.indexedAccessType(node);
+    // } // TODO: Fix.
+    // if (ts.isIndexSignatureDeclaration(node)) {
+    //   return yield* this.isIndexSignatureDeclaration(node);
+    // } // TODO: Fix.
+    if (node.kind === "interface") {
       return yield* this.interfaceDeclaration(node);
     }
-    if (ts.isLiteralTypeNode(node)) return yield* this.literalTypeNode(node);
-    if (ts.isNamedTupleMember(node)) return yield* this.namedTupleMember(node);
-    if (ts.isPropertySignature(node)) {
-      return yield* this.propertySignature(node);
+    if (node.kind === "literal") {
+      return yield* this.literalTypeNode(node);
     }
-    if (ts.isModuleDeclaration(node)) {
-      return yield* this.moduleDeclaration(node);
-    }
-    if (ts.isIdentifier(node)) return yield node.getText();
-    if (ts.isIntersectionTypeNode(node)) {
+    // if (ts.isNamedTupleMember(node)) {
+    //   return yield* this.namedTupleMember(node);
+    // } // TODO: Fix.
+    // if (ts.isPropertySignature(node)) {
+    //   return yield* this.propertySignature(node);
+    // } // TODO: Fix.
+    // if (ts.isModuleDeclaration(node)) {
+    //   return yield* this.moduleDeclaration(node);
+    // } // TODO: Remove.
+    // if (ts.isIdentifier(node)) {
+    //   return yield node.getText();
+    // } // TODO: Fix.
+
+    if (node.kind === "intersection") {
       return yield* this.intersectionTypeNode(node);
     }
-    if (ts.isUnionTypeNode(node)) return yield* this.unionTypeNode(node);
-    if (ts.isMappedTypeNode(node)) return yield* this.mappedTypeNode(node);
-    if (ts.isMethodSignature(node)) return yield* this.methodSignature(node);
-    if (ts.isModuleBlock(node)) return yield* this.moduleBlock(node);
-    if (ts.isParameter(node)) return yield* this.parameter(node);
-    if (ts.isParenthesizedTypeNode(node)) {
+    if (node.kind === "union") {
+      return yield* this.unionTypeNode(node);
+    }
+    if (node.kind === "mapped") {
+      return yield* this.mappedTypeNode(node);
+    }
+    // if (ts.isMethodSignature(node)) {
+    //   return yield* this.methodSignature(node);
+    // } // TODO: Fix.
+    // if (ts.isModuleBlock(node)) {
+    //   return yield* this.moduleBlock(node);
+    // } // TODO: Remove.
+    // if (ts.isParameter(node)) {
+    //   return yield* this.parameter(node);
+    // } // TODO: Fix.
+    if (node.kind === "parenthesized") {
       return yield* this.parenthesizedTypeNode(node);
     }
-    if (ts.isPropertyAccessExpression(node)) {
-      return yield* this.propertyAccessExpression(node);
+    // if (ts.isPropertyAccessExpression(node)) {
+    //   return yield* this.propertyAccessExpression(node);
+    // } // TODO: Remove.
+    if (node.kind === "rest") {
+      return yield* this.restTypeNode(node);
     }
-    if (ts.isRestTypeNode(node)) return yield* this.restTypeNode(node);
+
+    // TODO: Resume here.
     if (ts.isTupleTypeNode(node)) return yield* this.tupleTypeNode(node);
     if (ts.isTemplateLiteralTypeNode(node)) {
       return yield* this.templateLiteralTypeNode(node);
@@ -772,6 +819,7 @@ export class DocNodesToTypeBox {
       return yield* this.typeReferenceNode(node);
     }
     if (ts.isSourceFile(node)) return yield* this.sourceFile(node);
+
     if (node.kind === ts.SyntaxKind.ExportKeyword) return yield `export`;
     if (node.kind === ts.SyntaxKind.KeyOfKeyword) return yield `Type.KeyOf()`;
     if (node.kind === ts.SyntaxKind.NumberKeyword) return yield `Type.Number()`;
