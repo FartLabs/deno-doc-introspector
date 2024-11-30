@@ -1,4 +1,11 @@
 import * as ts from "typescript";
+import type {
+  DocNode,
+  TsTypeArrayDef,
+  TsTypeConditionalDef,
+  TsTypeDef,
+  TsTypeFnOrConstructorDef,
+} from "@deno/doc";
 
 export class TypeScriptToTypeBoxError extends Error {
   constructor(public readonly diagnostics: ts.Diagnostic[]) {
@@ -6,7 +13,7 @@ export class TypeScriptToTypeBoxError extends Error {
   }
 }
 
-export interface TypeScriptToTypeBoxOptions {
+export interface DocNodesToTypeBoxOptions {
   useExportEverything?: boolean;
   useTypeBoxImport?: boolean;
   useIdentifiers?: boolean;
@@ -14,7 +21,7 @@ export interface TypeScriptToTypeBoxOptions {
   // TODO: Add option useStaticType.
 }
 
-export class TypeScriptToTypeBox {
+export class DocNodesToTypeBox {
   private typenames = new Set<string>();
   private recursiveDeclaration:
     | ts.TypeAliasDeclaration
@@ -29,7 +36,7 @@ export class TypeScriptToTypeBox {
   private useIdentifiers = false;
   private useTypeBoxImport = true;
 
-  public constructor(options?: TypeScriptToTypeBoxOptions) {
+  public constructor(options?: DocNodesToTypeBoxOptions) {
     this.useExportsEverything = options?.useExportEverything ?? false;
     this.useIdentifiers = options?.useIdentifiers ?? false;
     this.useTypeBoxImport = options?.useTypeBoxImport ?? true;
@@ -202,9 +209,9 @@ export class TypeScriptToTypeBox {
     return type;
   }
 
-  private *sourceFile(node: ts.SourceFile): IterableIterator<string> {
-    for (const next of node.getChildren()) {
-      yield* this.visit(next);
+  private *sourceFile(nodes: DocNode[]): IterableIterator<string> {
+    for (const node of nodes) {
+      yield* this.visit(node);
     }
   }
 
@@ -229,7 +236,7 @@ export class TypeScriptToTypeBox {
     }
   }
 
-  private *arrayTypeNode(node: ts.ArrayTypeNode): IterableIterator<string> {
+  private *arrayTypeNode(node: TsTypeArrayDef): IterableIterator<string> {
     const type = this.collect(node.elementType);
     yield `Type.Array(${type})`;
   }
@@ -370,12 +377,12 @@ export class TypeScriptToTypeBox {
   }
 
   private *constructorTypeNode(
-    node: ts.ConstructorTypeNode,
+    node: TsTypeFnOrConstructorDef,
   ): IterableIterator<string> {
-    const parameters = node.parameters.map((param) => this.collect(param)).join(
-      ", ",
-    );
-    const returns = this.collect(node.type);
+    const parameters = node.fnOrConstructor.params
+      .map((param) => this.collect(param.tsType))
+      .join(", ");
+    const returns = this.collect(node.fnOrConstructor.tsType);
     yield `Type.Constructor([${parameters}], ${returns})`;
   }
 
@@ -576,12 +583,12 @@ export class TypeScriptToTypeBox {
   }
 
   private *conditionalTypeNode(
-    node: ts.ConditionalTypeNode,
+    node: TsTypeConditionalDef,
   ): IterableIterator<string> {
-    const checkType = this.collect(node.checkType);
-    const extendsType = this.collect(node.extendsType);
-    const trueType = this.collect(node.trueType);
-    const falseType = this.collect(node.falseType);
+    const checkType = this.collect(node.conditionalType.checkType);
+    const extendsType = this.collect(node.conditionalType.extendsType);
+    const trueType = this.collect(node.conditionalType.trueType);
+    const falseType = this.collect(node.conditionalType.falseType);
     yield `Type.Extends(${checkType}, ${extendsType}, ${trueType}, ${falseType})`;
   }
 
@@ -678,21 +685,26 @@ export class TypeScriptToTypeBox {
   ): IterableIterator<string> {
   }
 
-  private collect(node: ts.Node | undefined): string {
+  private collect(node: DocNode | TsTypeDef | undefined): string {
     return `${[...this.visit(node)].join("")}`;
   }
 
-  private *visit(node: ts.Node | undefined): IterableIterator<string> {
+  private *visit(
+    node: DocNode | TsTypeDef | undefined,
+  ): IterableIterator<string> {
     if (node === undefined) return;
-    if (ts.isArrayTypeNode(node)) return yield* this.arrayTypeNode(node);
-    if (ts.isBlock(node)) return yield* this.block(node);
-    if (ts.isClassDeclaration(node)) return yield* this.classDeclaration(node);
-    if (ts.isConditionalTypeNode(node)) {
+
+    if (node.kind === "array") return yield* this.arrayTypeNode(node);
+    // if (ts.isBlock(node)) return yield* this.block(node); // TODO: Remove.
+    // if (ts.isClassDeclaration(node)) return yield* this.classDeclaration(node); // TODO: Implement.
+    if (node.kind === "conditional") {
       return yield* this.conditionalTypeNode(node);
     }
-    if (ts.isConstructorTypeNode(node)) {
+    if (node.kind === "fnOrConstructor" && node.fnOrConstructor.constructor) {
       return yield* this.constructorTypeNode(node);
     }
+
+    // TODO: Resume here, with enumDeclaration.
     if (ts.isEnumDeclaration(node)) return yield* this.enumDeclaration(node);
     if (ts.isExpressionWithTypeArguments(node)) {
       return yield* this.expressionWithTypeArguments(node);
@@ -789,6 +801,7 @@ export class TypeScriptToTypeBox {
 
   private importStatement(): string {
     if (!(this.useImports && this.useTypeBoxImport)) return "";
+    // TODO: Add option useStaticType.
     const set = new Set<string>(["Type", "Static"]);
     if (this.useGenerics) {
       set.add("TSchema");
@@ -803,32 +816,16 @@ export class TypeScriptToTypeBox {
     return `import { ${imports} } from '@sinclair/typebox'`;
   }
 
-  public generate(typescriptCode: string) {
+  public generate(nodes: DocNode[]): string {
     this.typenames.clear();
     this.useImports = false;
     this.useOptions = false;
     this.useGenerics = false;
     this.useCloneType = false;
     this.blockLevel = 0;
-    const source = ts.createSourceFile(
-      "types.ts",
-      typescriptCode,
-      ts.ScriptTarget.ESNext,
-      true,
-    );
-    const declarations = [...this.visit(source)].join("\n\n");
+    const declarations = nodes.map((node) => this.visit(node)).join("\n\n");
     const imports = this.importStatement();
     const typescript = [imports, "", "", declarations].join("\n");
-    const assertion = ts.transpileModule(typescript, {
-      compilerOptions: {
-        strict: true,
-        target: ts.ScriptTarget.ES2022,
-      },
-    });
-    if (assertion.diagnostics && assertion.diagnostics.length > 0) {
-      throw new TypeScriptToTypeBoxError(assertion.diagnostics);
-    }
-
     return typescript;
   }
 }
