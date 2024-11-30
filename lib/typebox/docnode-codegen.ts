@@ -715,110 +715,110 @@ export class DocNodesToTypeBox {
       return;
     }
 
-    // TODO: Refactor to switch-case statement.
-    if (node.kind === "array") {
-      return yield* this.arrayTypeNode(node);
+    switch (node.kind) {
+      case "array": {
+        return yield* this.arrayTypeNode(node);
+      }
+      case "conditional": {
+        return yield* this.conditionalTypeNode(node);
+      }
+      case "fnOrConstructor": {
+        return yield* node.fnOrConstructor.constructor
+          ? this.constructorTypeNode(node)
+          : this.functionTypeNode(node);
+      }
+      case "enum": {
+        return yield* this.enumDeclaration(node);
+      }
+      case "interface": {
+        return yield* this.interfaceDeclaration(node);
+      }
+      case "literal": {
+        return yield* this.literalTypeNode(node);
+      }
+      case "intersection": {
+        return yield* this.intersectionTypeNode(node);
+      }
+      case "union": {
+        return yield* this.unionTypeNode(node);
+      }
+      case "mapped": {
+        return yield* this.mappedTypeNode(node);
+      }
+      case "parenthesized": {
+        return yield* this.parenthesizedTypeNode(node);
+      }
+      case "rest": {
+        return yield* this.restTypeNode(node);
+      }
+      default:
+        if (ts.isTupleTypeNode(node)) return yield* this.tupleTypeNode(node);
+        if (ts.isTemplateLiteralTypeNode(node)) {
+          return yield* this.templateLiteralTypeNode(node);
+        }
+        if (ts.isTemplateLiteralTypeSpan(node)) {
+          return yield* this.templateLiteralTypeSpan(node);
+        }
+        if (ts.isTemplateHead(node)) return yield* this.templateHead(node);
+        if (ts.isTemplateMiddle(node)) return yield* this.templateMiddle(node);
+        if (ts.isTemplateTail(node)) return yield* this.templateTail(node);
+        if (ts.isThisTypeNode(node)) return yield* this.thisTypeNode(node);
+        if (ts.isTypeAliasDeclaration(node)) {
+          return yield* this.typeAliasDeclaration(node);
+        }
+        if (ts.isTypeLiteralNode(node)) {
+          return yield* this.typeLiteralNode(node);
+        }
+        if (ts.isTypeOperatorNode(node)) {
+          return yield* this.typeOperatorNode(node);
+        }
+        if (ts.isTypeParameterDeclaration(node)) {
+          return yield* this.typeParameterDeclaration(node);
+        }
+        if (ts.isTypeReferenceNode(node)) {
+          return yield* this.typeReferenceNode(node);
+        }
+        if (ts.isSourceFile(node)) return yield* this.sourceFile(node);
+        if (node.kind === ts.SyntaxKind.ExportKeyword) return yield `export`;
+        if (node.kind === ts.SyntaxKind.KeyOfKeyword) {
+          return yield `Type.KeyOf()`;
+        }
+        if (node.kind === ts.SyntaxKind.NumberKeyword) {
+          return yield `Type.Number()`;
+        }
+        if (node.kind === ts.SyntaxKind.BigIntKeyword) {
+          return yield `Type.BigInt()`;
+        }
+        if (node.kind === ts.SyntaxKind.StringKeyword) {
+          return yield `Type.String()`;
+        }
+        if (node.kind === ts.SyntaxKind.SymbolKeyword) {
+          return yield `Type.Symbol()`;
+        }
+        if (node.kind === ts.SyntaxKind.BooleanKeyword) {
+          return yield `Type.Boolean()`;
+        }
+        if (node.kind === ts.SyntaxKind.UndefinedKeyword) {
+          return yield `Type.Undefined()`;
+        }
+        if (node.kind === ts.SyntaxKind.UnknownKeyword) {
+          return yield `Type.Unknown()`;
+        }
+        if (node.kind === ts.SyntaxKind.AnyKeyword) return yield `Type.Any()`;
+        if (node.kind === ts.SyntaxKind.NeverKeyword) {
+          return yield `Type.Never()`;
+        }
+        if (node.kind === ts.SyntaxKind.NullKeyword) return yield `Type.Null()`;
+        if (node.kind === ts.SyntaxKind.VoidKeyword) return yield `Type.Void()`;
+        if (node.kind === ts.SyntaxKind.EndOfFileToken) return;
+        if (node.kind === ts.SyntaxKind.SyntaxList) {
+          for (const child of node.getChildren()) {
+            yield* this.visit(child);
+          }
+          return;
+        }
+        console.warn("Unhandled:", ts.SyntaxKind[node.kind], node.getText());
     }
-    // if (ts.isBlock(node)) return yield* this.block(node); // TODO: Remove.
-    // if (ts.isClassDeclaration(node)) return yield* this.classDeclaration(node); // TODO: Implement.
-    if (node.kind === "conditional") {
-      return yield* this.conditionalTypeNode(node);
-    }
-    if (node.kind === "fnOrConstructor" && node.fnOrConstructor.constructor) {
-      return yield* this.constructorTypeNode(node);
-    }
-    if (node.kind === "enum") {
-      return yield* this.enumDeclaration(node);
-    }
-    // if (ts.isExpressionWithTypeArguments(node)) {
-    //   return yield* this.expressionWithTypeArguments(node);
-    // } // TODO: Remove.
-    // if (node.kind ==="function") {
-    //   return yield* this.functionDeclaration(node);
-    // } // TODO: Implement.
-    if (node.kind === "fnOrConstructor" && !node.fnOrConstructor.constructor) {
-      return yield* this.functionTypeNode(node);
-    }
-    // if (ts.isHeritageClause(node)) {
-    //   return yield* this.heritageClause(node);
-    // } // TODO: Fix.
-    // if (ts.isIndexedAccessTypeNode(node)) {
-    //   return yield* this.indexedAccessType(node);
-    // } // TODO: Fix.
-    // if (ts.isIndexSignatureDeclaration(node)) {
-    //   return yield* this.isIndexSignatureDeclaration(node);
-    // } // TODO: Fix.
-    if (node.kind === "interface") {
-      return yield* this.interfaceDeclaration(node);
-    }
-    if (node.kind === "literal") {
-      return yield* this.literalTypeNode(node);
-    }
-    // if (ts.isNamedTupleMember(node)) {
-    //   return yield* this.namedTupleMember(node);
-    // } // TODO: Fix.
-    // if (ts.isPropertySignature(node)) {
-    //   return yield* this.propertySignature(node);
-    // } // TODO: Fix.
-    // if (ts.isModuleDeclaration(node)) {
-    //   return yield* this.moduleDeclaration(node);
-    // } // TODO: Remove.
-    // if (ts.isIdentifier(node)) {
-    //   return yield node.getText();
-    // } // TODO: Fix.
-
-    if (node.kind === "intersection") {
-      return yield* this.intersectionTypeNode(node);
-    }
-    if (node.kind === "union") {
-      return yield* this.unionTypeNode(node);
-    }
-    if (node.kind === "mapped") {
-      return yield* this.mappedTypeNode(node);
-    }
-    // if (ts.isMethodSignature(node)) {
-    //   return yield* this.methodSignature(node);
-    // } // TODO: Fix.
-    // if (ts.isModuleBlock(node)) {
-    //   return yield* this.moduleBlock(node);
-    // } // TODO: Remove.
-    // if (ts.isParameter(node)) {
-    //   return yield* this.parameter(node);
-    // } // TODO: Fix.
-    if (node.kind === "parenthesized") {
-      return yield* this.parenthesizedTypeNode(node);
-    }
-    // if (ts.isPropertyAccessExpression(node)) {
-    //   return yield* this.propertyAccessExpression(node);
-    // } // TODO: Remove.
-    if (node.kind === "rest") {
-      return yield* this.restTypeNode(node);
-    }
-
-    // TODO: Resume here.
-    if (ts.isTupleTypeNode(node)) return yield* this.tupleTypeNode(node);
-    if (ts.isTemplateLiteralTypeNode(node)) {
-      return yield* this.templateLiteralTypeNode(node);
-    }
-    if (ts.isTemplateLiteralTypeSpan(node)) {
-      return yield* this.templateLiteralTypeSpan(node);
-    }
-    if (ts.isTemplateHead(node)) return yield* this.templateHead(node);
-    if (ts.isTemplateMiddle(node)) return yield* this.templateMiddle(node);
-    if (ts.isTemplateTail(node)) return yield* this.templateTail(node);
-    if (ts.isThisTypeNode(node)) return yield* this.thisTypeNode(node);
-    if (ts.isTypeAliasDeclaration(node)) {
-      return yield* this.typeAliasDeclaration(node);
-    }
-    if (ts.isTypeLiteralNode(node)) return yield* this.typeLiteralNode(node);
-    if (ts.isTypeOperatorNode(node)) return yield* this.typeOperatorNode(node);
-    if (ts.isTypeParameterDeclaration(node)) {
-      return yield* this.typeParameterDeclaration(node);
-    }
-    if (ts.isTypeReferenceNode(node)) {
-      return yield* this.typeReferenceNode(node);
-    }
-    if (ts.isSourceFile(node)) return yield* this.sourceFile(node);
 
     if (node.kind === ts.SyntaxKind.ExportKeyword) return yield `export`;
     if (node.kind === ts.SyntaxKind.KeyOfKeyword) return yield `Type.KeyOf()`;
