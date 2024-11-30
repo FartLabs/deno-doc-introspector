@@ -1,6 +1,7 @@
 import * as ts from "typescript";
 import type {
   DocNode,
+  DocNodeEnum,
   TsTypeArrayDef,
   TsTypeConditionalDef,
   TsTypeDef,
@@ -237,7 +238,7 @@ export class DocNodesToTypeBox {
   }
 
   private *arrayTypeNode(node: TsTypeArrayDef): IterableIterator<string> {
-    const type = this.collect(node.elementType);
+    const type = this.collect(node);
     yield `Type.Array(${type})`;
   }
 
@@ -386,15 +387,17 @@ export class DocNodesToTypeBox {
     yield `Type.Constructor([${parameters}], ${returns})`;
   }
 
-  private *enumDeclaration(node: ts.EnumDeclaration): IterableIterator<string> {
+  private *enumDeclaration(node: DocNodeEnum): IterableIterator<string> {
     this.useImports = true;
-    const exports = this.isExport(node) ? "export " : "";
-    const members = node.members.map((member) => member.getText()).join(", ");
-    const enumType = `${exports}enum Enum${node.name.getText()} { ${members} }`;
+    const exports = node.declarationKind === "export" ? "export " : "";
+    const members = node.enumDef.members.map((member) => member.name).join(
+      ", ",
+    );
+    const enumType = `${exports}enum Enum${node.name} { ${members} }`;
     const staticType =
-      `${exports}type ${node.name.getText()} = Static<typeof ${node.name.getText()}>`;
+      `${exports}type ${node.name} = Static<typeof ${node.name.getText()}>`;
     const type =
-      `${exports}const ${node.name.getText()} = Type.Enum(Enum${node.name.getText()})`;
+      `${exports}const ${node.name} = Type.Enum(Enum${node.name.getText()})`;
     yield [enumType, "", staticType, type].join("\n");
   }
 
@@ -704,11 +707,10 @@ export class DocNodesToTypeBox {
       return yield* this.constructorTypeNode(node);
     }
 
-    // TODO: Resume here, with enumDeclaration.
-    if (ts.isEnumDeclaration(node)) return yield* this.enumDeclaration(node);
-    if (ts.isExpressionWithTypeArguments(node)) {
-      return yield* this.expressionWithTypeArguments(node);
-    }
+    if (node.kind === "enum") return yield* this.enumDeclaration(node);
+    // if (ts.isExpressionWithTypeArguments(node)) {
+    //   return yield* this.expressionWithTypeArguments(node);
+    // } // TODO: Remove.
     if (ts.isFunctionDeclaration(node)) {
       return yield* this.functionDeclaration(node);
     }
