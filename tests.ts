@@ -4,8 +4,8 @@ const remoteAddress =
   "https://github.com/microsoft/TypeScript/raw/b263cc4b2ef12ae013526a3d8808b6716146586a/tests/cases/compiler";
 
 const testCases = [
-  "2dArrays.ts",
-];
+  "interfaceDeclaration5.ts",
+] as const satisfies string[];
 
 const testsDirectory = "tests";
 
@@ -21,4 +21,10 @@ if (import.meta.main) {
     const text = await response.text();
     await Deno.writeTextFile(`${testsDirectory}/${testCase}`, text);
   }
+}
+
+export type TestCase = typeof testCases[number];
+
+export function readTestFile(testCase: TestCase): Promise<string> {
+  return Deno.readTextFile(`${testsDirectory}/${testCase}`);
 }

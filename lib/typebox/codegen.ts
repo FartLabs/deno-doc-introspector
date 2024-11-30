@@ -1,4 +1,3 @@
-// import { JsDoc } from "../common/jsdoc";
 import * as ts from "typescript";
 
 export class TypeScriptToTypeBoxError extends Error {
@@ -28,7 +27,7 @@ export class TypeScriptToTypeBox {
   private useIdentifiers = false;
   private useTypeBoxImport = true;
 
-  constructor(private options?: TypeScriptToTypeBoxOptions) {
+  constructor(options?: TypeScriptToTypeBoxOptions) {
     this.useExportsEverything = options?.useExportEverything ?? false;
     this.useIdentifiers = options?.useIdentifiers ?? false;
     this.useTypeBoxImport = options?.useTypeBoxImport ?? true;
@@ -134,7 +133,7 @@ export class TypeScriptToTypeBox {
       | ts.PropertySignature
       | ts.InterfaceDeclaration,
   ): Record<string, unknown> {
-    console.info({ resolveOptions: _node });
+    // console.info({ resolveOptions: _node });
     return {};
     // const content = this.resolveJsDocComment(node);
     // return JsDoc.Parse(content);
