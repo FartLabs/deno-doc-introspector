@@ -264,21 +264,14 @@ function* generateSourceFile(nodes: DocNode[]): IterableIterator<string> {
 function* generatePropertySignature(
   def: LiteralPropertyDef,
 ): IterableIterator<string> {
-  //   const [readonly, optional] = [
-  //     checkIsReadonlyProperty(def),
-  //     checkIsOptionalProperty(def),
-  //   ];
-  //   const options = resolveOptions(def);
-  const type_0 = collectNode(def.type);
-  const type_1 = injectOptions(type_0, options);
-  if (readonly && optional) {
-    return yield `${def.name}: Type.ReadonlyOptional(${type_1})`;
-  } else if (readonly) {
-    return yield `${def.name}: Type.Readonly(${type_1})`;
-  } else if (optional) {
-    return yield `${def.name}: Type.Optional(${type_1})`;
+  if (def.readonly && def.optional) {
+    return yield `${def.name}: Type.ReadonlyOptional(${def.tsType})`;
+  } else if (def.readonly) {
+    return yield `${def.name}: Type.Readonly(${def.tsType})`;
+  } else if (def.optional) {
+    return yield `${def.name}: Type.Optional(${def.tsType})`;
   } else {
-    return yield `${def.name}: ${type_1}`;
+    return yield `${def.name}: ${def.tsType}`;
   }
 }
 
@@ -350,20 +343,20 @@ function* generateMappedTypeNode(
   );
 }
 
-function* generateMethodSignature(
-  node: ts.MethodSignature,
-): IterableIterator<string> {
-  const parameters = node.parameters.map((
-    parameter,
-  ) => (parameter.dotDotDotToken !== undefined
-    ? `...Type.Rest(${collectNode(parameter)})`
-    : collectNode(parameter))
-  ).join(", ");
-  const returnType = node.type === undefined
-    ? `Type.Unknown()`
-    : collectNode(node.type);
-  yield `${node.name.getText()}: Type.Function([${parameters}], ${returnType})`;
-}
+// function* generateMethodSignature(
+//   node: ts.MethodSignature,
+// ): IterableIterator<string> {
+//   const parameters = node.parameters.map((
+//     parameter,
+//   ) => (parameter.dotDotDotToken !== undefined
+//     ? `...Type.Rest(${collectNode(parameter)})`
+//     : collectNode(parameter))
+//   ).join(", ");
+//   const returnType = node.type === undefined
+//     ? `Type.Unknown()`
+//     : collectNode(node.type);
+//   yield `${node.name.getText()}: Type.Function([${parameters}], ${returnType})`;
+// }
 
 function* generateTemplateLiteralTypeNode(node: ts.TemplateLiteralTypeNode) {
   const collect = node.getChildren().map((node) => collectNode(node)).join("");
@@ -517,12 +510,14 @@ function* generateInterfaceDeclaration(
     //   ? { ...resolveOptions(node), $id: identifier }
     //   : { ...resolveOptions(node) };
 
-    // TODO: Fix.
+    // TODO: Properly re-implement with DocNode.
+    // https://github.com/sinclairzx81/typebox-codegen/blob/7a859390ab29032156d8da260038b45cf63fc5a4/src/typescript/typescript-to-typebox.ts
+    //
     const constraints = node.interfaceDef.typeParams.map((param) =>
-      `${collectNode(param)} extends TSchema`
+      `${param.constraint} extends TSchema`
     ).join(", ");
-    const parameters = node.typeParameters.map((param) =>
-      `${collectNode(param)}: ${collectNode(param)}`
+    const parameters = node.interfaceDef.typeParams.map((param) =>
+      `${param.name}: ${param.default?.repr}`
     ).join(", ");
     const members = generatePropertiesFromTypeElementArray(node.members);
     const names = node.typeParameters.map((param) => `${collectNode(param)}`)
