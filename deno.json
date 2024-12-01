@@ -2,7 +2,7 @@
   "lock": false,
   "tasks": {
     "test": "deno test --allow-import --allow-read --allow-env --allow-net",
-    "get-tests": "deno run --allow-read --allow-write --allow-net tests.ts",
+    "get-tests": "deno run --allow-env --allow-read --allow-write --allow-net tests.ts",
     "outdated": "deno outdated --update --latest"
   },
   "imports": {

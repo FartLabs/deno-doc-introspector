@@ -7,6 +7,7 @@ const remoteAddress =
 
 const testCases = [
   "interfaceDeclaration5.ts",
+  "interfacedecl.ts",
 ] as const satisfies string[];
 
 const testsDirectory = "tests";
@@ -18,8 +19,7 @@ if (import.meta.main) {
 
   await Deno.mkdir(testsDirectory);
   for (const testCase of testCases) {
-    const url = `${remoteAddress}/${testCase}`;
-    const response = await fetch(url);
+    const response = await fetch(`${remoteAddress}/${testCase}`);
     const text = await response.text();
     await Deno.writeTextFile(`${testsDirectory}/${testCase}`, text);
   }
