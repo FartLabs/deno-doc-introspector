@@ -37,8 +37,7 @@ export interface DocNodesToTypeBoxOptions {
   // TODO: Add option useStaticType.
 }
 
-// TODO: Rename to DenoDocToTypeBox.
-export class DocNodesToTypeBox {
+export class DenoDocToTypeBox {
   private typenames = new Set<string>();
   private recursiveDeclaration: DocNodeTypeAlias | DocNodeInterface | null =
     null;
@@ -105,89 +104,92 @@ export class DocNodesToTypeBox {
     return check1 || check2;
   }
 
-  private isReadonlyProperty(node: ts.PropertySignature): boolean {
-    return node.modifiers !== undefined &&
-      node.modifiers.find((modifier) => modifier.getText() === "readonly") !==
-        undefined;
-  }
+  // private isReadonlyProperty(node: ts.PropertySignature): boolean {
+  //   return node.modifiers !== undefined &&
+  //     node.modifiers.find((modifier) => modifier.getText() === "readonly") !==
+  //       undefined;
+  // }
 
-  private isOptionalProperty(node: ts.PropertySignature) {
-    return node.questionToken !== undefined;
-  }
+  // private isOptionalProperty(node: ts.PropertySignature) {
+  //   return node.questionToken !== undefined;
+  // }
 
-  private isOptionalParameter(node: ts.ParameterDeclaration) {
-    return node.questionToken !== undefined;
-  }
+  // private isOptionalParameter(node: ts.ParameterDeclaration) {
+  //   return node.questionToken !== undefined;
+  // }
 
-  private isExport(
-    node:
-      | ts.InterfaceDeclaration
-      | ts.TypeAliasDeclaration
-      | ts.EnumDeclaration
-      | ts.ModuleDeclaration,
-  ): boolean {
-    return this.blockLevel === 0 &&
-      (this.useExportsEverything ||
-        (node.modifiers !== undefined &&
-          node.modifiers.find((modifier) => modifier.getText() === "export") !==
-            undefined));
-  }
+  // private isExport(
+  //   node:
+  //     | ts.InterfaceDeclaration
+  //     | ts.TypeAliasDeclaration
+  //     | ts.EnumDeclaration
+  //     | ts.ModuleDeclaration,
+  // ): boolean {
+  //   return this.blockLevel === 0 &&
+  //     (this.useExportsEverything ||
+  //       (node.modifiers !== undefined &&
+  //         node.modifiers.find((modifier) => modifier.getText() === "export") !==
+  //           undefined));
+  // }
 
-  private isNamespace(node: ts.ModuleDeclaration) {
-    return node.flags === ts.NodeFlags.Namespace;
-  }
+  // private isNamespace(node: ts.ModuleDeclaration) {
+  //   return node.flags === ts.NodeFlags.Namespace;
+  // }
 
-  private resolveJsDocComment(
-    node:
-      | ts.TypeAliasDeclaration
-      | ts.PropertySignature
-      | ts.InterfaceDeclaration,
-  ): string {
-    const content = node.getFullText().trim();
-    const indices = [
-      content.indexOf("/**"),
-      content.indexOf("type"),
-      content.indexOf("interface"),
-    ].map((n) => (n === -1 ? Infinity : n));
-    if (
-      indices[0] === -1 || indices[1] < indices[0] || indices[2] < indices[0]
-    ) {
-      return ""; // no comment or declaration before comment
-    }
-    for (let i = indices[0]; i < content.length; i++) {
-      if (content[i] === "*" && content[i + 1] === "/") {
-        return content.slice(0, i + 2);
-      }
-    }
-    return "";
-  }
+  // private resolveJsDocComment(
+  //   node:
+  //     | ts.TypeAliasDeclaration
+  //     | ts.PropertySignature
+  //     | ts.InterfaceDeclaration,
+  // ): string {
+  //   const content = node.getFullText().trim();
+  //   const indices = [
+  //     content.indexOf("/**"),
+  //     content.indexOf("type"),
+  //     content.indexOf("interface"),
+  //   ].map((n) => (n === -1 ? Infinity : n));
+  //   if (
+  //     indices[0] === -1 || indices[1] < indices[0] || indices[2] < indices[0]
+  //   ) {
+  //     return ""; // no comment or declaration before comment
+  //   }
+  //   for (let i = indices[0]; i < content.length; i++) {
+  //     if (content[i] === "*" && content[i + 1] === "/") {
+  //       return content.slice(0, i + 2);
+  //     }
+  //   }
+  //   return "";
+  // }
 
-  private resolveOptions(
-    _node:
-      | ts.TypeAliasDeclaration
-      | ts.PropertySignature
-      | ts.InterfaceDeclaration,
-  ): Record<string, unknown> {
-    // console.info({ resolveOptions: _node });
-    return {};
-    // const content = this.resolveJsDocComment(node);
-    // return JsDoc.Parse(content);
-  }
+  // private resolveOptions(
+  //   _node:
+  //     | ts.TypeAliasDeclaration
+  //     | ts.PropertySignature
+  //     | ts.InterfaceDeclaration,
+  // ): Record<string, unknown> {
+  //   // console.info({ resolveOptions: _node });
+  //   return {};
+  //   // const content = this.resolveJsDocComment(node);
+  //   // return JsDoc.Parse(content);
+  // }
 
-  private resolveIdentifier(
-    node: ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
-  ) {
-    function* resolve(node: ts.Node): IterableIterator<string> {
-      if (node.parent) yield* resolve(node.parent);
-      if (ts.isModuleDeclaration(node)) yield node.name.getText();
-    }
-    return [...resolve(node), node.name.getText()].join(".");
-  }
+  // private resolveIdentifier(
+  //   node: ts.InterfaceDeclaration | ts.TypeAliasDeclaration,
+  // ) {
+  //   function* resolve(node: ts.Node): IterableIterator<string> {
+  //     if (node.parent) yield* resolve(node.parent);
+  //     if (ts.isModuleDeclaration(node)) yield node.name.getText();
+  //   }
+  //   return [...resolve(node), node.name.getText()].join(".");
+  // }
 
   private unwrapModifier(type: string) {
     for (let i = 0; i < type.length; i++) {
-      if (type[i] === "(") return type.slice(i + 1, type.length - 1);
+      if (type[i] === "(") {
+        return type.slice(i + 1, type.length - 1);
+      }
     }
+
     return type;
   }
 

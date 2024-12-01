@@ -1,10 +1,10 @@
 import { assertEquals } from "@std/assert";
 import { testDocNodes } from "#/tests.ts";
-import { DocNodesToTypeBox } from "./docnode-codegen.ts";
+import { DenoDocToTypeBox } from "./deno-doc-to-typebox.ts";
 
 // TODO: WIP.
-Deno.test("DocNodesToTypeBox", () => {
-  const generator = new DocNodesToTypeBox();
+Deno.test("DenoDocToTypeBox", () => {
+  const generator = new DenoDocToTypeBox();
   const nodes = testDocNodes.get("interfaceDeclaration5.ts")!;
   const actual = generator.generate(nodes);
   const expected = "import { Type, Static } from '@sinclair/typebox'\n" +
