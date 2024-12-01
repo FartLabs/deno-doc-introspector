@@ -474,6 +474,7 @@ export class DocNodesToTypeBox {
       this.recursiveDeclaration = node;
     }
 
+    // TODO: Fix.
     const heritage = node.heritageClauses !== undefined
       ? node.heritageClauses.flatMap((node) => this.collect(node))
       : [];
