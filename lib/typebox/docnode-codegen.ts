@@ -474,58 +474,65 @@ export class DocNodesToTypeBox {
       this.recursiveDeclaration = node;
     }
 
-    // TODO: Fix.
-    const heritage = node.heritageClauses !== undefined
-      ? node.heritageClauses.flatMap((node) => this.collect(node))
-      : [];
-    if (node.typeParameters) {
+    const heritage = node.interfaceDef.extends
+      .map((node) => this.collect(node));
+    if (node.interfaceDef.typeParams.length > 0) {
       this.useGenerics = true;
-      const exports = this.isExport(node) ? "export " : "";
-      const identifier = this.resolveIdentifier(node);
-      const options = this.useIdentifiers
-        ? { ...this.resolveOptions(node), $id: identifier }
-        : { ...this.resolveOptions(node) };
-      const constraints = node.typeParameters.map((param) =>
-        `${this.collect(param)} extends TSchema`
-      ).join(", ");
-      const parameters = node.typeParameters.map((param) =>
-        `${this.collect(param)}: ${this.collect(param)}`
-      ).join(", ");
-      const members = this.propertiesFromTypeElementArray(node.members);
-      const names = node.typeParameters.map((param) => `${this.collect(param)}`)
+      const exports = node.declarationKind === "export" ? "export " : "";
+
+      // const identifier = node.name;
+      // const options = this.useIdentifiers
+      //   ? { ...this.resolveOptions(node), $id: identifier }
+      //   : { ...this.resolveOptions(node) };
+      const constraints = node.interfaceDef.typeParams
+        .map((param) => `${this.collect(param.constraint)} extends TSchema`)
+        .join(", ");
+      const parameters = node.interfaceDef.typeParams
+        .map((param) =>
+          `${this.collect(param.constraint)}: ${this.collect(param.constraint)}`
+        )
+        .join(", ");
+      const members = this.propertiesFromTypeElementArray(
+        node.interfaceDef.properties,
+      );
+      const names = node.interfaceDef.typeParams
+        .map((param) => `${this.collect(param.constraint)}`)
         .join(", ");
       const staticDeclaration =
-        `${exports}type ${node.name.getText()}<${constraints}> = Static<ReturnType<typeof ${node.name.getText()}<${names}>>>`;
+        `${exports}type ${node.name}<${constraints}> = Static<ReturnType<typeof ${node.name}<${names}>>>`;
       const rawTypeExpression = this.isRecursiveType(node)
         ? `Type.Recursive(This => Type.Object(${members}))`
         : `Type.Object(${members})`;
       const typeExpression = heritage.length === 0
         ? rawTypeExpression
         : `Type.Composite([${heritage.join(", ")}, ${rawTypeExpression}])`;
-      const type = this.injectOptions(typeExpression, options);
+      // const type = this.injectOptions(typeExpression, options);
       const typeDeclaration =
-        `${exports}const ${node.name.getText()} = <${constraints}>(${parameters}) => ${type}`;
+        `${exports}const ${node.name} = <${constraints}>(${parameters}) => ${typeExpression}`;
       yield `${staticDeclaration}\n${typeDeclaration}`;
     } else {
-      const exports = this.isExport(node) ? "export " : "";
-      const identifier = this.resolveIdentifier(node);
-      const options = this.useIdentifiers
-        ? { ...this.resolveOptions(node), $id: identifier }
-        : { ...this.resolveOptions(node) };
-      const members = this.propertiesFromTypeElementArray(node.members);
+      const exports = node.declarationKind === "export" ? "export " : "";
+      // const identifier = this.resolveIdentifier(node);
+      // const options = this.useIdentifiers
+      //   ? { ...this.resolveOptions(node), $id: identifier }
+      //   : { ...this.resolveOptions(node) };
+      const members = this.propertiesFromTypeElementArray(
+        node.interfaceDef.properties,
+      );
       const staticDeclaration =
-        `${exports}type ${node.name.getText()} = Static<typeof ${node.name.getText()}>`;
+        `${exports}type ${node.name} = Static<typeof ${node.name}>`;
       const rawTypeExpression = this.isRecursiveType(node)
         ? `Type.Recursive(This => Type.Object(${members}))`
         : `Type.Object(${members})`;
       const typeExpression = heritage.length === 0
         ? rawTypeExpression
         : `Type.Composite([${heritage.join(", ")}, ${rawTypeExpression}])`;
-      const type = this.injectOptions(typeExpression, options);
+      // const type = this.injectOptions(typeExpression, options);
       const typeDeclaration =
-        `${exports}const ${node.name.getText()} = ${type}`;
+        `${exports}const ${node.name} = ${typeExpression}`;
       yield `${staticDeclaration}\n${typeDeclaration}`;
     }
+
     this.recursiveDeclaration = null;
   }
 
@@ -534,80 +541,86 @@ export class DocNodesToTypeBox {
   ): IterableIterator<string> {
     this.useImports = true;
     const isRecursiveType = this.isRecursiveType(node);
-    if (isRecursiveType) this.recursiveDeclaration = node;
-    if (node.typeParameters) {
+    if (isRecursiveType) {
+      this.recursiveDeclaration = node;
+    }
+
+    if (node.typeAliasDef.typeParams.length > 0) {
       this.useGenerics = true;
-      const exports = this.isExport(node) ? "export " : "";
-      const options = this.useIdentifiers
-        ? { $id: this.resolveIdentifier(node) }
-        : {};
-      const constraints = node.typeParameters.map((param) =>
-        `${this.collect(param)} extends TSchema`
+      const exports = node.declarationKind === "export" ? "export " : "";
+      // const options = this.useIdentifiers
+      //   ? { $id: this.resolveIdentifier(node) }
+      //   : {};
+      const constraints = node.typeAliasDef.typeParams.map((param) =>
+        `${this.collect(param.constraint)} extends TSchema`
       ).join(", ");
-      const parameters = node.typeParameters.map((param) =>
-        `${this.collect(param)}: ${this.collect(param)}`
+      const parameters = node.typeAliasDef.typeParams.map((param) =>
+        `${this.collect(param.constraint)}: ${this.collect(param.constraint)}`
       ).join(", ");
-      const type_0 = this.collect(node.type);
+      const type_0 = this.collect(node.typeAliasDef.tsType);
       const type_1 = isRecursiveType
         ? `Type.Recursive(This => ${type_0})`
         : type_0;
-      const type_2 = this.injectOptions(type_1, options);
-      const names = node.typeParameters.map((param) => this.collect(param))
+      // const type_2 = this.injectOptions(type_1, options);
+      const names = node.typeAliasDef.typeParams
+        .map((param) => this.collect(param.constraint))
         .join(", ");
       const staticDeclaration =
-        `${exports}type ${node.name.getText()}<${constraints}> = Static<ReturnType<typeof ${node.name.getText()}<${names}>>>`;
+        `${exports}type ${node.name}<${constraints}> = Static<ReturnType<typeof ${node.name}<${names}>>>`;
       const typeDeclaration =
-        `${exports}const ${node.name.getText()} = <${constraints}>(${parameters}) => ${type_2}`;
+        `${exports}const ${node.name} = <${constraints}>(${parameters}) => ${type_1}`;
+
       yield `${staticDeclaration}\n${typeDeclaration}`;
     } else {
-      const exports = this.isExport(node) ? "export " : "";
-      const options = this.useIdentifiers
-        ? { $id: this.resolveIdentifier(node), ...this.resolveOptions(node) }
-        : { ...this.resolveOptions(node) };
-      const type_0 = this.collect(node.type);
+      const exports = node.declarationKind === "export" ? "export " : "";
+      // const options = this.useIdentifiers
+      //   ? { $id: this.resolveIdentifier(node), ...this.resolveOptions(node) }
+      //   : { ...this.resolveOptions(node) };
+      const type_0 = this.collect(node.typeAliasDef.tsType);
       const type_1 = isRecursiveType
         ? `Type.Recursive(This => ${type_0})`
         : type_0;
-      const type_2 = this.injectOptions(type_1, options);
+      // const type_2 = this.injectOptions(type_1, options);
       const staticDeclaration =
-        `${exports}type ${node.name.getText()} = Static<typeof ${node.name.getText()}>`;
-      const typeDeclaration =
-        `${exports}const ${node.name.getText()} = ${type_2}`;
+        `${exports}type ${node.name} = Static<typeof ${node.name}>`;
+      const typeDeclaration = `${exports}const ${node.name} = ${type_1}`;
+
       yield `${staticDeclaration}\n${typeDeclaration}`;
     }
+
     this.recursiveDeclaration = null;
   }
 
-  private *heritageClause(node: ts.HeritageClause): IterableIterator<string> {
-    const types = node.types.map((node) => this.collect(node));
-    yield types.join(", ");
-  }
+  // private *heritageClause(node: ts.HeritageClause): IterableIterator<string> {
+  //   const types = node.types.map((node) => this.collect(node));
+  //   yield types.join(", ");
+  // }
 
-  private *indexedAccessType(
-    node: ts.IndexedAccessTypeNode,
-  ): IterableIterator<string> {
-    const obj = node.objectType.getText();
-    const key = this.collect(node.indexType);
-    yield `Type.Index(${obj}, ${key})`;
-  }
+  // private *indexedAccessType(
+  //   node: ts.IndexedAccessTypeNode,
+  // ): IterableIterator<string> {
+  //   const obj = node.objectType.getText();
+  //   const key = this.collect(node.indexType);
+  //   yield `Type.Index(${obj}, ${key})`;
+  // }
 
-  private *expressionWithTypeArguments(
-    node: ts.ExpressionWithTypeArguments,
-  ): IterableIterator<string> {
-    const name = this.collect(node.expression);
-    const typeArguments = node.typeArguments === undefined
-      ? []
-      : node.typeArguments.map((node) => this.collect(node));
-    return yield typeArguments.length === 0
-      ? `${name}`
-      : `${name}(${typeArguments.join(", ")})`;
-  }
+  // private *expressionWithTypeArguments(
+  //   node: ts.ExpressionWithTypeArguments,
+  // ): IterableIterator<string> {
+  //   const name = this.collect(node.expression);
+  //   const typeArguments = node.typeArguments === undefined
+  //     ? []
+  //     : node.typeArguments.map((node) => this.collect(node));
+  //   return yield typeArguments.length === 0
+  //     ? `${name}`
+  //     : `${name}(${typeArguments.join(", ")})`;
+  // }
 
-  private *typeParameterDeclaration(
-    node: ts.TypeParameterDeclaration,
-  ): IterableIterator<string> {
-    yield node.name.getText();
-  }
+  // private *typeParameterDeclaration(
+  //   node: ts.TypeParameterDeclaration,
+  // ): IterableIterator<string> {
+  //   yield node.name.getText();
+  // }
 
   private *parenthesizedTypeNode(
     node: TsTypeParenthesizedDef,

@@ -39,7 +39,7 @@ export const testDocNodes = new Map<TestCase, DocNode[]>(
   await Promise.all(
     testFiles.map(async (file): Promise<[TestCase, DocNode[]]> => [
       file.name as TestCase,
-      await doc(`${testsDirectory}/${file.name}`),
+      await doc(import.meta.resolve(`./${testsDirectory}/${file.name}`)),
     ]),
   ),
 );
