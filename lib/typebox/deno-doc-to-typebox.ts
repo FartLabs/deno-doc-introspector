@@ -42,7 +42,7 @@ export class DenoDocToTypeBox {
   private recursiveDeclaration: DocNodeTypeAlias | DocNodeInterface | null =
     null;
   private blockLevel = 0;
-  private useImports = false;
+  private useImports = true;
   private useOptions = false;
   private useGenerics = false;
   private useCloneType = false;
@@ -892,6 +892,7 @@ export class DenoDocToTypeBox {
     this.blockLevel = 0;
     const declarations = nodes.map((node) => this.visit(node)).join("\n\n");
     const imports = this.importStatement();
+    console.log({ declarations, imports });
     const typescript = [imports, "", "", declarations].join("\n");
     return typescript;
   }
