@@ -12,6 +12,7 @@ import type {
   TsTypeDefLiteral,
   TsTypeFnOrConstructorDef,
   TsTypeIntersectionDef,
+  TsTypeKeywordDef,
   TsTypeMappedDef,
   TsTypeParenthesizedDef,
   TsTypeRestDef,
@@ -30,29 +31,30 @@ export class TypeScriptToTypeBoxError extends Error {
 }
 
 export interface DocNodesToTypeBoxOptions {
-  useExportEverything?: boolean;
+  // useExportEverything?: boolean;
   useTypeBoxImport?: boolean;
-  useIdentifiers?: boolean;
+  // useIdentifiers?: boolean;
 
   // TODO: Add option useStaticType.
 }
 
+// TODO: Migrate to ts-morph for building TypeScript files.
 export class DenoDocToTypeBox {
   private typenames = new Set<string>();
   private recursiveDeclaration: DocNodeTypeAlias | DocNodeInterface | null =
     null;
-  private blockLevel = 0;
+  // private blockLevel = 0;
   private useImports = true;
   private useOptions = false;
   private useGenerics = false;
   private useCloneType = false;
-  private useExportsEverything = false;
-  private useIdentifiers = false;
+  // private useExportsEverything = false;
+  // private useIdentifiers = false;
   private useTypeBoxImport = true;
 
   public constructor(options?: DocNodesToTypeBoxOptions) {
-    this.useExportsEverything = options?.useExportEverything ?? false;
-    this.useIdentifiers = options?.useIdentifiers ?? false;
+    // this.useExportsEverything = options?.useExportEverything ?? false;
+    // this.useIdentifiers = options?.useIdentifiers ?? false;
     this.useTypeBoxImport = options?.useTypeBoxImport ?? true;
   }
 
@@ -444,11 +446,12 @@ export class DenoDocToTypeBox {
     const indexers = members
       .filter((member) => member.tsType?.kind === "indexedAccess");
     const propertyCollect = properties
-      .map((property) => this.collect(property.tsType))
+      .map((property) => `${property.name}: ${this.collect(property.tsType)}`)
       .join(",\n");
     const indexer = indexers.length > 0
       ? this.collect(indexers[indexers.length - 1]?.tsType)
       : "";
+    // TODO: Fix additionalProperties.
     if (properties.length === 0 && indexer.length > 0) {
       return `{},\n{\nadditionalProperties: ${indexer}\n }`;
     } else if (properties.length > 0 && indexer.length > 0) {
@@ -471,6 +474,7 @@ export class DenoDocToTypeBox {
     node: DocNodeInterface,
   ): IterableIterator<string> {
     this.useImports = true;
+
     const isRecursiveType = this.isRecursiveType(node);
     if (isRecursiveType) {
       this.recursiveDeclaration = node;
@@ -486,6 +490,7 @@ export class DenoDocToTypeBox {
       // const options = this.useIdentifiers
       //   ? { ...this.resolveOptions(node), $id: identifier }
       //   : { ...this.resolveOptions(node) };
+
       const constraints = node.interfaceDef.typeParams
         .map((param) => `${this.collect(param.constraint)} extends TSchema`)
         .join(", ");
@@ -494,9 +499,14 @@ export class DenoDocToTypeBox {
           `${this.collect(param.constraint)}: ${this.collect(param.constraint)}`
         )
         .join(", ");
+
+      // console.log({ properties: node.interfaceDef.properties });
       const members = this.propertiesFromTypeElementArray(
         node.interfaceDef.properties,
       );
+
+      // console.log({ members });
+
       const names = node.interfaceDef.typeParams
         .map((param) => `${this.collect(param.constraint)}`)
         .join(", ");
@@ -518,6 +528,7 @@ export class DenoDocToTypeBox {
       // const options = this.useIdentifiers
       //   ? { ...this.resolveOptions(node), $id: identifier }
       //   : { ...this.resolveOptions(node) };
+      // console.log({ properties: node.interfaceDef.properties });
       const members = this.propertiesFromTypeElementArray(
         node.interfaceDef.properties,
       );
@@ -749,6 +760,27 @@ export class DenoDocToTypeBox {
   ): IterableIterator<string> {
   }
 
+  private *keyword(node: TsTypeKeywordDef): IterableIterator<string> {
+    switch (node.keyword) {
+      case "string": {
+        return yield `Type.String()`;
+      }
+      case "number": {
+        return yield `Type.Number()`;
+      }
+      case "boolean": {
+        return yield `Type.Boolean()`;
+      }
+      case "null": {
+        return yield `Type.Null()`;
+      }
+
+      default: {
+        throw new Error(`Unhandled keyword: ${node.keyword}`);
+      }
+    }
+  }
+
   private collect(node: DocNode | TsTypeDef | undefined): string {
     return `${[...this.visit(node)].join("")}`;
   }
@@ -814,6 +846,9 @@ export class DenoDocToTypeBox {
       case "typeRef": {
         return yield* this.typeReferenceNode(node);
       }
+      case "keyword": {
+        return yield* this.keyword(node);
+      }
 
       default: {
         // if (ts.isTypeParameterDeclaration(node)) {
@@ -861,24 +896,32 @@ export class DenoDocToTypeBox {
         //   return;
         // }
         //
+
         console.warn("Unhandled:", node);
+        // throw new Error(`Unhandled node: ${node.kind}`);
       }
     }
   }
 
   private importStatement(): string {
-    if (!(this.useImports && this.useTypeBoxImport)) return "";
+    if (!(this.useImports && this.useTypeBoxImport)) {
+      return "";
+    }
+
     // TODO: Add option useStaticType.
     const set = new Set<string>(["Type", "Static"]);
     if (this.useGenerics) {
       set.add("TSchema");
     }
+
     if (this.useOptions) {
       set.add("SchemaOptions");
     }
+
     if (this.useCloneType) {
       set.add("CloneType");
     }
+
     const imports = [...set].join(", ");
     return `import { ${imports} } from '@sinclair/typebox'`;
   }
@@ -889,10 +932,11 @@ export class DenoDocToTypeBox {
     this.useOptions = false;
     this.useGenerics = false;
     this.useCloneType = false;
-    this.blockLevel = 0;
-    const declarations = nodes.map((node) => this.visit(node)).join("\n\n");
+    // this.blockLevel = 0;
+    const declarations = nodes
+      .flatMap((node) => [...this.visit(node)])
+      .join("\n\n");
     const imports = this.importStatement();
-    console.log({ declarations, imports });
     const typescript = [imports, "", "", declarations].join("\n");
     return typescript;
   }
