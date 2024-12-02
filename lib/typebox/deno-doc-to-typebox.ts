@@ -195,47 +195,21 @@ export class DenoDocToTypeBox {
     return type;
   }
 
-  private injectOptions(
-    type: string,
-    options: Record<string, unknown>,
-  ): string {
-    if (globalThis.Object.keys(options).length === 0) return type;
-    if (type.indexOf("Type.ReadonlyOptional") === 0) {
+  private unwrapType(type: string): string {
+    if (type.startsWith("Type.ReadonlyOptional")) {
       return `Type.ReadonlyOptional(${
-        this.injectOptions(this.unwrapModifier(type), options)
+        this.unwrapType(this.unwrapModifier(type))
       })`;
     }
-    if (type.indexOf("Type.Readonly") === 0) {
-      return `Type.Readonly(${
-        this.injectOptions(this.unwrapModifier(type), options)
-      })`;
+
+    if (type.startsWith("Type.Readonly")) {
+      return `Type.Readonly(${this.unwrapType(this.unwrapModifier(type))})`;
     }
-    if (type.indexOf("Type.Optional") === 0) {
-      return `Type.Optional(${
-        this.injectOptions(this.unwrapModifier(type), options)
-      })`;
+
+    if (type.startsWith("Type.Optional")) {
+      return `Type.Optional(${this.unwrapType(this.unwrapModifier(type))})`;
     }
-    const encoded = JSON.stringify(options);
-    if (type.lastIndexOf("]") === type.length - 1) this.useCloneType = true;
-    if (type.lastIndexOf("]") === type.length - 1) {
-      return `CloneType(${type}, ${encoded})`;
-    }
-    if (type.indexOf("(") === -1) {
-      this.useCloneType = true;
-      return `CloneType(${type}, ${encoded})`;
-    }
-    if (type.lastIndexOf("()") === type.length - 2) {
-      return type.slice(0, type.length - 1) + `${encoded})`;
-    }
-    if (type.lastIndexOf("})") === type.length - 2) {
-      return type.slice(0, type.length - 1) + `, ${encoded})`;
-    }
-    if (type.lastIndexOf("])") === type.length - 2) {
-      return type.slice(0, type.length - 1) + `, ${encoded})`;
-    }
-    if (type.lastIndexOf(")") === type.length - 1) {
-      return type.slice(0, type.length - 1) + `, ${encoded})`;
-    }
+
     return type;
   }
 
@@ -540,9 +514,9 @@ export class DenoDocToTypeBox {
       const typeExpression = heritage.length === 0
         ? rawTypeExpression
         : `Type.Composite([${heritage.join(", ")}, ${rawTypeExpression}])`;
-      // const type = this.injectOptions(typeExpression, options);
-      const typeDeclaration =
-        `${exports}const ${node.name} = ${typeExpression}`;
+
+      const type = this.unwrapType(typeExpression);
+      const typeDeclaration = `${exports}const ${node.name} = ${type}`;
       yield `${staticDeclaration}\n${typeDeclaration}`;
     }
 
@@ -760,7 +734,7 @@ export class DenoDocToTypeBox {
   ): IterableIterator<string> {
   }
 
-  private *keyword(node: TsTypeKeywordDef): IterableIterator<string> {
+  private *keywordNode(node: TsTypeKeywordDef): IterableIterator<string> {
     switch (node.keyword) {
       case "string": {
         return yield `Type.String()`;
@@ -847,7 +821,7 @@ export class DenoDocToTypeBox {
         return yield* this.typeReferenceNode(node);
       }
       case "keyword": {
-        return yield* this.keyword(node);
+        return yield* this.keywordNode(node);
       }
 
       default: {
