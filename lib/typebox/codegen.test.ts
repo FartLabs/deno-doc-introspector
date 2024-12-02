@@ -5,7 +5,7 @@ import { TypeScriptToTypeBox } from "./codegen.ts";
 Deno.test("TypeScriptToTypeBox", async (t) => {
   const generator = new TypeScriptToTypeBox();
 
-  await t.step("interfaceDeclaration1", async () => {
+  await t.step("interfaceDeclaration1.ts", async () => {
     const sourceCode = await readTestFile("interfaceDeclaration5.ts");
     const actual = generator.generate(sourceCode);
     const expected = "import { Type, Static } from '@sinclair/typebox'\n" +
