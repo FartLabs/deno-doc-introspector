@@ -277,7 +277,7 @@ export class DenoDocToTypeBox {
     const readonly = node.mappedType.readonly !== undefined;
     const optional = node.mappedType.optional !== undefined;
     // if (optional) {
-    console.log("mappedType", { node });
+    // console.log("mappedType", { node });
     // }
 
     // TODO: Verify values of mapped type.
@@ -377,11 +377,11 @@ export class DenoDocToTypeBox {
     }
   }
 
-  // private *parameter(node: ts.ParameterDeclaration): IterableIterator<string> {
-  //   yield this.isOptionalParameter(node)
-  //     ? `Type.Optional(${this.collect(node.type)})`
-  //     : this.collect(node.type);
-  // }
+  private literalProperty(node: LiteralPropertyDef): string {
+    return node.optional
+      ? `Type.Optional(${this.collect(node.tsType)})`
+      : this.collect(node.tsType);
+  }
 
   private *functionTypeNode(
     node: TsTypeFnOrConstructorDef,
@@ -429,7 +429,7 @@ export class DenoDocToTypeBox {
 
     // TODO: Possibly here lies the bug?
     const propertyCollect = properties
-      .map((property) => `${property.name}: ${this.collect(property.tsType)}`)
+      .map((property) => `${property.name}: ${this.literalProperty(property)}`)
       .join(",\n");
     const indexer = indexers.length > 0
       ? this.collect(indexers[indexers.length - 1]?.tsType)
