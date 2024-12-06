@@ -20,8 +20,8 @@ Deno.test("DenoDocToTypeBox", async (t) => {
   });
 
   await t.step("interfacedecl.ts", () => {
-    const sourceCode = testDocNodes.get("interfacedecl.ts")!;
-    const actual = generator.generate(sourceCode);
+    const nodes = testDocNodes.get("interfacedecl.ts")!;
+    const actual = generator.generate(nodes);
     const expected = "import { Type, Static } from '@sinclair/typebox'\n" +
       "\n" +
       "\n" +

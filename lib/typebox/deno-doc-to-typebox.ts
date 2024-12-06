@@ -1,7 +1,9 @@
 import * as ts from "typescript";
 import type {
   DocNode,
+  DocNodeClass,
   DocNodeEnum,
+  DocNodeFunction,
   DocNodeInterface,
   DocNodeTypeAlias,
   InterfacePropertyDef,
@@ -38,7 +40,7 @@ export interface DocNodesToTypeBoxOptions {
   // TODO: Add option useStaticType.
 }
 
-// TODO: Migrate to ts-morph for building TypeScript files.
+// TODO: Migrate to ts-morph for building TypeScript files, once tests pass.
 export class DenoDocToTypeBox {
   private typenames = new Set<string>();
   private recursiveDeclaration: DocNodeTypeAlias | DocNodeInterface | null =
@@ -274,8 +276,13 @@ export class DenoDocToTypeBox {
     const C = this.collect(node.mappedType.typeParam.constraint);
     const readonly = node.mappedType.readonly !== undefined;
     const optional = node.mappedType.optional !== undefined;
-    const isReadonlyTokenMinus = false; // TODO: Implement.
-    const isQuestionTokenMinus = false; // TODO: Implement.
+    // if (optional) {
+    console.log("mappedType", { node });
+    // }
+
+    // TODO: Verify values of mapped type.
+    const isReadonlyTokenMinus = node.mappedType.readonly?.valueOf() === "-";
+    const isQuestionTokenMinus = node.mappedType.optional?.valueOf() === "-";
     const readonlySubtractive = readonly && isReadonlyTokenMinus;
     const optionalSubtractive = optional && isQuestionTokenMinus;
     return yield (
@@ -419,6 +426,8 @@ export class DenoDocToTypeBox {
       .filter((member) => member.tsType?.kind !== "indexedAccess");
     const indexers = members
       .filter((member) => member.tsType?.kind === "indexedAccess");
+
+    // TODO: Possibly here lies the bug?
     const propertyCollect = properties
       .map((property) => `${property.name}: ${this.collect(property.tsType)}`)
       .join(",\n");
@@ -650,48 +659,95 @@ export class DenoDocToTypeBox {
           .join(", ")
       })`
       : "";
-    if (name === "Date") return yield `Type.Date()`;
-    if (name === "Uint8Array") return yield `Type.Uint8Array()`;
-    if (name === "String") return yield `Type.String()`;
-    if (name === "Number") return yield `Type.Number()`;
-    if (name === "Boolean") return yield `Type.Boolean()`;
-    if (name === "Function") return yield `Type.Function([], Type.Unknown())`;
-    if (name === "Array") return yield `Type.Array${args}`;
-    if (name === "Record") return yield `Type.Record${args}`;
-    if (name === "Partial") return yield `Type.Partial${args}`;
-    if (name === "Required") return yield `Type.Required${args}`;
-    if (name === "Omit") return yield `Type.Omit${args}`;
-    if (name === "Pick") return yield `Type.Pick${args}`;
-    if (name === "Promise") return yield `Type.Promise${args}`;
-    if (name === "ReturnType") return yield `Type.ReturnType${args}`;
-    if (name === "InstanceType") return yield `Type.InstanceType${args}`;
-    if (name === "Parameters") return yield `Type.Parameters${args}`;
-    if (name === "AsyncIterableIterator") {
-      return yield `Type.AsyncIterator${args}`;
+
+    switch (name) {
+      case "Date": {
+        return yield `Type.Date()`;
+      }
+      case "Uint8Array": {
+        return yield `Type.Uint8Array()`;
+      }
+      case "String": {
+        return yield `Type.String()`;
+      }
+      case "Number": {
+        return yield `Type.Number()`;
+      }
+      case "Boolean": {
+        return yield `Type.Boolean()`;
+      }
+      case "Function": {
+        return yield `Type.Function([], Type.Unknown())`;
+      }
+      case "Array": {
+        return yield `Type.Array${args}`;
+      }
+      case "Record": {
+        return yield `Type.Record${args}`;
+      }
+      case "Partial": {
+        return yield `Type.Partial${args}`;
+      }
+      case "Required": {
+        return yield `Type.Required${args}`;
+      }
+      case "Omit": {
+        return yield `Type.Omit${args}`;
+      }
+      case "Pick": {
+        return yield `Type.Pick${args}`;
+      }
+      case "Promise": {
+        return yield `Type.Promise${args}`;
+      }
+      case "ReturnType": {
+        return yield `Type.ReturnType${args}`;
+      }
+      case "InstanceType": {
+        return yield `Type.InstanceType${args}`;
+      }
+      case "Parameters": {
+        return yield `Type.Parameters${args}`;
+      }
+      case "AsyncIterableIterator": {
+        return yield `Type.AsyncIterator${args}`;
+      }
+      case "IterableIterator": {
+        return yield `Type.Iterator${args}`;
+      }
+      case "ConstructorParameters": {
+        return yield `Type.ConstructorParameters${args}`;
+      }
+      case "Exclude": {
+        return yield `Type.Exclude${args}`;
+      }
+      case "Extract": {
+        return yield `Type.Extract${args}`;
+      }
+      case "Awaited": {
+        return yield `Type.Awaited${args}`;
+      }
+      case "Uppercase": {
+        return yield `Type.Uppercase${args}`;
+      }
+      case "Lowercase": {
+        return yield `Type.Lowercase${args}`;
+      }
+      case "Capitalize": {
+        return yield `Type.Capitalize${args}`;
+      }
+      case "Uncapitalize": {
+        return yield `Type.Uncapitalize${args}`;
+      }
+      default: {
+        if (
+          this.recursiveDeclaration !== null &&
+          this.findRecursiveParent(this.recursiveDeclaration, node)
+        ) return yield `This`;
+        if (name in globalThis) return yield `Type.Never()`;
+        return yield `${name}${args}`;
+      }
     }
-    if (name === "IterableIterator") return yield `Type.Iterator${args}`;
-    if (name === "ConstructorParameters") {
-      return yield `Type.ConstructorParameters${args}`;
-    }
-    if (name === "Exclude") return yield `Type.Exclude${args}`;
-    if (name === "Extract") return yield `Type.Extract${args}`;
-    if (name === "Awaited") return yield `Type.Awaited${args}`;
-    if (name === "Uppercase") return yield `Type.Uppercase${args}`;
-    if (name === "Lowercase") return yield `Type.Lowercase${args}`;
-    if (name === "Capitalize") return yield `Type.Capitalize${args}`;
-    if (name === "Uncapitalize") return yield `Type.Uncapitalize${args}`;
-    if (
-      this.recursiveDeclaration !== null &&
-      this.findRecursiveParent(this.recursiveDeclaration, node)
-    ) return yield `This`;
-    // if (
-    //   this.findTypeName(node.getSourceFile(), name) &&
-    //   args.length === 0
-    // ) {
-    //   return yield `${name}${args}`;
-    // }
-    if (name in globalThis) return yield `Type.Never()`;
-    return yield `${name}${args}`;
   }
 
   private *literalTypeNode(node: TsTypeDefLiteral): IterableIterator<string> {
@@ -725,12 +781,12 @@ export class DenoDocToTypeBox {
   // }
 
   private *functionDeclaration(
-    _node: ts.FunctionDeclaration,
+    _node: DocNodeFunction,
   ): IterableIterator<string> {
   }
 
   private *classDeclaration(
-    _node: ts.ClassDeclaration,
+    _node: DocNodeClass,
   ): IterableIterator<string> {
   }
 
@@ -747,6 +803,30 @@ export class DenoDocToTypeBox {
       }
       case "null": {
         return yield `Type.Null()`;
+      }
+      case "undefined": {
+        return yield `Type.Undefined()`;
+      }
+      case "unknown": {
+        return yield `Type.Unknown()`;
+      }
+      case "void": {
+        return yield `Type.Void()`;
+      }
+      case "never": {
+        return yield `Type.Never()`;
+      }
+      case "bigint": {
+        return yield `Type.BigInt()`;
+      }
+      case "any": {
+        return yield `Type.Any()`;
+      }
+      case "symbol": {
+        return yield `Type.Symbol()`;
+      }
+      case "keyof": {
+        return yield `Type.KeyOf()`;
       }
 
       default: {
@@ -765,6 +845,15 @@ export class DenoDocToTypeBox {
     if (node === undefined) {
       return;
     }
+
+    // TODO:
+    // Implement missing cases like Block, ClassDeclaration, FunctionDeclaration,
+    // HeritageClause, IndexSignatureDeclaration, ModuleDeclaration, ModuleBlock,
+    // Parameter, PropertyAccessExpression, SourceFile, SyntaxList,
+    // TemplateLiteralTypeNode, TemplateLiteralTypeSpan, TemplateHead, TemplateMiddle,
+    // TemplateTail, and TypeParameterDeclaration. Break down the fnOrConstructor case
+    // into separate cases for functionTypeNode and constructorTypeNode.
+    //
 
     switch (node.kind) {
       case "array": {
@@ -823,54 +912,14 @@ export class DenoDocToTypeBox {
       case "keyword": {
         return yield* this.keywordNode(node);
       }
+      case "function": {
+        return yield* this.functionDeclaration(node);
+      }
+      case "class": {
+        return yield* this.classDeclaration(node);
+      }
 
       default: {
-        // if (ts.isTypeParameterDeclaration(node)) {
-        //   return yield* this.typeParameterDeclaration(node);
-        // }
-        // if (ts.isSourceFile(node)) return yield* this.sourceFile(node);
-
-        // TODO: Fix.
-        // if (node.kind === ts.SyntaxKind.ExportKeyword) return yield `export`;
-        // if (node.kind === ts.SyntaxKind.KeyOfKeyword) {
-        //   return yield `Type.KeyOf()`;
-        // }
-        // if (node.kind === ts.SyntaxKind.NumberKeyword) {
-        //   return yield `Type.Number()`;
-        // }
-        // if (node.kind === ts.SyntaxKind.BigIntKeyword) {
-        //   return yield `Type.BigInt()`;
-        // }
-        // if (node.kind === ts.SyntaxKind.StringKeyword) {
-        //   return yield `Type.String()`;
-        // }
-        // if (node.kind === ts.SyntaxKind.SymbolKeyword) {
-        //   return yield `Type.Symbol()`;
-        // }
-        // if (node.kind === ts.SyntaxKind.BooleanKeyword) {
-        //   return yield `Type.Boolean()`;
-        // }
-        // if (node.kind === ts.SyntaxKind.UndefinedKeyword) {
-        //   return yield `Type.Undefined()`;
-        // }
-        // if (node.kind === ts.SyntaxKind.UnknownKeyword) {
-        //   return yield `Type.Unknown()`;
-        // }
-        // if (node.kind === ts.SyntaxKind.AnyKeyword) return yield `Type.Any()`;
-        // if (node.kind === ts.SyntaxKind.NeverKeyword) {
-        //   return yield `Type.Never()`;
-        // }
-        // if (node.kind === ts.SyntaxKind.NullKeyword) return yield `Type.Null()`;
-        // if (node.kind === ts.SyntaxKind.VoidKeyword) return yield `Type.Void()`;
-        // if (node.kind === ts.SyntaxKind.EndOfFileToken) return;
-        // if (node.kind === ts.SyntaxKind.SyntaxList) {
-        //   for (const child of node.getChildren()) {
-        //     yield* this.visit(child);
-        //   }
-        //   return;
-        // }
-        //
-
         console.warn("Unhandled:", node);
         // throw new Error(`Unhandled node: ${node.kind}`);
       }
