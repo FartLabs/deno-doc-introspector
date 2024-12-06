@@ -72,4 +72,20 @@ Deno.test("DenoDocToTypeBox", async (t) => {
 
     assertEquals(actual, expected);
   });
+
+  await t.step("nested-interface.ts", () => {
+    const nodes = testDocNodes.get("nested-interface.ts")!;
+    const actual = generator.generate(nodes);
+    const expected = "import { Type, Static } from '@sinclair/typebox'\n" +
+      "\n" +
+      "\n" +
+      "type Foo = Static<typeof Foo>\n" +
+      "const Foo = Type.Object({\n" +
+      "bar: Type.Object({\n" +
+      "baz: Type.String()\n" +
+      "})\n" +
+      "})";
+
+    assertEquals(actual, expected);
+  });
 });
