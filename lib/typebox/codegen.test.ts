@@ -27,10 +27,6 @@ Deno.test("TypeScriptToTypeBox", async (t) => {
       "\n" +
       "type a0 = Static<typeof a0>\n" +
       "const a0 = Type.Object({\n" +
-      ",\n" +
-      ",\n" +
-      ",\n" +
-      ",\n" +
       "p1: ,\n" +
       "p2: Type.String(),\n" +
       "p3: Type.Optional(),\n" +
@@ -40,10 +36,7 @@ Deno.test("TypeScriptToTypeBox", async (t) => {
       "f2: Type.Function([], Type.Unknown()),\n" +
       "f3: Type.Function([Type.String()], Type.Number()),\n" +
       "f4: Type.Function([Type.Number()], Type.String())\n" +
-      "},\n" +
-      "{\n" +
-      "additionalProperties: Type.Any()\n" +
-      " })\n" +
+      "})\n" +
       "\n" +
       "type a1 = Static<typeof a1>\n" +
       "const a1 = Type.Object({},\n" +

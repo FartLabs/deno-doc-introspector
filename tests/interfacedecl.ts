@@ -1,14 +1,8 @@
-// @declaration: true
+// From:
+// https://github.com/microsoft/TypeScript/raw/b263cc4b2ef12ae013526a3d8808b6716146586a/tests/cases/compiler/interfacedecl.ts
+//
+
 interface a0 {
-    (): string;
-    (a, b, c?: string): number;
-    
-    new (): string;
-    new (s: string);
-
-    [n: number]: ()=>string;
-    [s: string]: any;
-
     p1;
     p2: string;
     p3?;
@@ -44,4 +38,3 @@ interface d extends a {
 
 class c1 implements a {
 }
-var instance2 = new c1();
