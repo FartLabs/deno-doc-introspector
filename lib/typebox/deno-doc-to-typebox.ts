@@ -7,6 +7,7 @@ import type {
   DocNodeInterface,
   DocNodeTypeAlias,
   InterfacePropertyDef,
+  LiteralMethodDef,
   LiteralPropertyDef,
   TsTypeArrayDef,
   TsTypeConditionalDef,
@@ -428,12 +429,14 @@ export class DenoDocToTypeBox {
       .filter((member) => member.tsType?.kind === "indexedAccess");
 
     // TODO: Possibly here lies the bug?
+    console.log({ members });
     const propertyCollect = properties
       .map((property) => `${property.name}: ${this.literalProperty(property)}`)
       .join(",\n");
     const indexer = indexers.length > 0
       ? this.collect(indexers[indexers.length - 1]?.tsType)
       : "";
+
     // TODO: Fix additionalProperties.
     if (properties.length === 0 && indexer.length > 0) {
       return `{},\n{\nadditionalProperties: ${indexer}\n }`;
@@ -444,11 +447,36 @@ export class DenoDocToTypeBox {
     }
   }
 
+  // TODO: Finish implementing this method.
+  private methodsFromTypeElementArray(members: LiteralMethodDef[]): string {
+    const methods = members
+      .filter((member) => member.kind === "method");
+    return methods
+      .map((method) =>
+        `${method.name}: ${
+          this.collect(
+            {
+              kind: "fnOrConstructor",
+              repr: "",
+              fnOrConstructor: {
+                constructor: false,
+                params: method.params,
+                tsType: method.returnType!,
+                typeParams: method.typeParams,
+              },
+            } satisfies TsTypeFnOrConstructorDef,
+          )
+        }`
+      )
+      .join(",\n");
+  }
+
   private *typeLiteralNode(
     node: TsTypeTypeLiteralDef,
   ): IterableIterator<string> {
     const members = this.propertiesFromTypeElementArray(
       node.typeLiteral.properties,
+      node.typeLiteral.methods,
     );
     yield* `Type.Object(${members})`;
   }
