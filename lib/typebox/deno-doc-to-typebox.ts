@@ -215,13 +215,6 @@ export class DenoDocToTypeBox {
 
     return type;
   }
-
-  private *sourceFile(nodes: DocNode[]): IterableIterator<string> {
-    for (const node of nodes) {
-      yield* this.visit(node);
-    }
-  }
-
   // private *propertySignature(
   //   node: ts.PropertySignature,
   // ): IterableIterator<string> {
@@ -379,6 +372,10 @@ export class DenoDocToTypeBox {
   }
 
   private literalProperty(node: LiteralPropertyDef): string {
+    // if (node.name.startsWith("f")) {
+    //   console.log("literalProperty", { node });
+    // }
+
     return node.optional
       ? `Type.Optional(${this.collect(node.tsType)})`
       : this.collect(node.tsType);
@@ -387,6 +384,7 @@ export class DenoDocToTypeBox {
   private *functionTypeNode(
     node: TsTypeFnOrConstructorDef,
   ): IterableIterator<string> {
+    // console.log("Function type node", { node });
     const parameters = node.fnOrConstructor.params.map((
       parameter,
     ) => (parameter.kind === "rest"
@@ -420,68 +418,56 @@ export class DenoDocToTypeBox {
     yield [enumType, "", staticType, type].join("\n");
   }
 
-  private propertiesFromTypeElementArray(
-    members: (LiteralPropertyDef | LiteralMethodDef)[],
+  private membersFromTypeElementArray(
+    propertyDefs: LiteralPropertyDef[],
+    methodDefs: LiteralMethodDef[] = [],
   ): string {
-    const properties = members.filter((member) =>
-      (member as LiteralPropertyDef).tsType?.kind !== "indexedAccess"
-    );
-    const indexers = members.filter((member) =>
-      (member as LiteralPropertyDef).tsType?.kind === "indexedAccess"
-    );
-
-    // TODO: Possibly here lies the bug?
-    console.log({ members });
-    const propertyCollect = properties
-      .map((property) =>
-        `${property.name}: ${
-          (property as LiteralMethodDef).kind === "method"
-            ? this.literalMethod(property as LiteralMethodDef)
-            : this.literalProperty(property as LiteralPropertyDef)
-        }`
+    const memberCollect = propertyDefs
+      .filter((member) => member.tsType?.kind !== "indexedAccess")
+      .map((property) => `${property.name}: ${this.literalProperty(property)}`)
+      .concat(
+        methodDefs.map((method) =>
+          `${method.name}: ${
+            this.collect(
+              {
+                repr: "",
+                kind: "fnOrConstructor",
+                fnOrConstructor: {
+                  constructor: false,
+                  params: method.params,
+                  typeParams: method.typeParams,
+                  tsType: method.returnType!,
+                },
+              } satisfies TsTypeFnOrConstructorDef,
+            )
+          }`
+        ),
       )
       .join(",\n");
+
+    const indexers = propertyDefs
+      .filter((member) => member.tsType?.kind === "indexedAccess");
+
     const indexer = indexers.length > 0
-      ? this.collect(
-        (indexers[indexers.length - 1] as LiteralPropertyDef).tsType,
-      )
+      ? this.collect(indexers[indexers.length - 1]?.tsType)
       : "";
 
     // TODO: Fix additionalProperties.
-    if (properties.length === 0 && indexer.length > 0) {
+    if (propertyDefs.length === 0 && indexer.length > 0) {
       return `{},\n{\nadditionalProperties: ${indexer}\n }`;
-    } else if (properties.length > 0 && indexer.length > 0) {
-      return `{\n${propertyCollect}\n},\n{\nadditionalProperties: ${indexer}\n }`;
+    } else if (propertyDefs.length > 0 && indexer.length > 0) {
+      return `{\n${memberCollect}\n},\n{\nadditionalProperties: ${indexer}\n }`;
     } else {
-      return `{\n${propertyCollect}\n}`;
+      return `{\n${memberCollect}\n}`;
     }
-  }
-
-  // TODO: Finish implementing this method.
-  private literalMethod(method: LiteralMethodDef): string {
-    console.log({ literalMethod: method });
-    return this.collect(
-      {
-        kind: "fnOrConstructor",
-        repr: "",
-        fnOrConstructor: {
-          constructor: false,
-          params: method.params,
-          tsType: method.returnType!,
-          typeParams: method.typeParams,
-        },
-      } satisfies TsTypeFnOrConstructorDef,
-    );
   }
 
   private *typeLiteralNode(
     node: TsTypeTypeLiteralDef,
   ): IterableIterator<string> {
-    // TODO: Figure out where methods are stored in the type literal.
-    const members = this.propertiesFromTypeElementArray([
-      ...node.typeLiteral.properties,
-      ...node.typeLiteral.methods,
-    ]);
+    const members = this.membersFromTypeElementArray(
+      node.typeLiteral.properties,
+    );
     yield* `Type.Object(${members})`;
   }
 
@@ -515,9 +501,9 @@ export class DenoDocToTypeBox {
         )
         .join(", ");
 
-      // console.log({ properties: node.interfaceDef.properties });
-      const members = this.propertiesFromTypeElementArray(
+      const members = this.membersFromTypeElementArray(
         node.interfaceDef.properties,
+        node.interfaceDef.methods,
       );
 
       // console.log({ members });
@@ -544,8 +530,16 @@ export class DenoDocToTypeBox {
       //   ? { ...this.resolveOptions(node), $id: identifier }
       //   : { ...this.resolveOptions(node) };
       // console.log({ properties: node.interfaceDef.properties });
-      const members = this.propertiesFromTypeElementArray(
+
+      // The methods exist here.
+      // console.log({
+      //   properties: node.interfaceDef.properties,
+      //   methods: node.interfaceDef.methods,
+      // });
+
+      const members = this.membersFromTypeElementArray(
         node.interfaceDef.properties,
+        node.interfaceDef.methods,
       );
       const staticDeclaration =
         `${exports}type ${node.name} = Static<typeof ${node.name}>`;
@@ -945,6 +939,7 @@ export class DenoDocToTypeBox {
         return yield* this.keywordNode(node);
       }
       case "function": {
+        console.log("Function:", node);
         return yield* this.functionDeclaration(node);
       }
       case "class": {
