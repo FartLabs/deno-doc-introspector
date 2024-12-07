@@ -421,20 +421,30 @@ export class DenoDocToTypeBox {
   }
 
   private propertiesFromTypeElementArray(
-    members: LiteralPropertyDef[],
+    members: (LiteralPropertyDef | LiteralMethodDef)[],
   ): string {
-    const properties = members
-      .filter((member) => member.tsType?.kind !== "indexedAccess");
-    const indexers = members
-      .filter((member) => member.tsType?.kind === "indexedAccess");
+    const properties = members.filter((member) =>
+      (member as LiteralPropertyDef).tsType?.kind !== "indexedAccess"
+    );
+    const indexers = members.filter((member) =>
+      (member as LiteralPropertyDef).tsType?.kind === "indexedAccess"
+    );
 
     // TODO: Possibly here lies the bug?
     console.log({ members });
     const propertyCollect = properties
-      .map((property) => `${property.name}: ${this.literalProperty(property)}`)
+      .map((property) =>
+        `${property.name}: ${
+          (property as LiteralMethodDef).kind === "method"
+            ? this.literalMethod(property as LiteralMethodDef)
+            : this.literalProperty(property as LiteralPropertyDef)
+        }`
+      )
       .join(",\n");
     const indexer = indexers.length > 0
-      ? this.collect(indexers[indexers.length - 1]?.tsType)
+      ? this.collect(
+        (indexers[indexers.length - 1] as LiteralPropertyDef).tsType,
+      )
       : "";
 
     // TODO: Fix additionalProperties.
@@ -448,36 +458,30 @@ export class DenoDocToTypeBox {
   }
 
   // TODO: Finish implementing this method.
-  private methodsFromTypeElementArray(members: LiteralMethodDef[]): string {
-    const methods = members
-      .filter((member) => member.kind === "method");
-    return methods
-      .map((method) =>
-        `${method.name}: ${
-          this.collect(
-            {
-              kind: "fnOrConstructor",
-              repr: "",
-              fnOrConstructor: {
-                constructor: false,
-                params: method.params,
-                tsType: method.returnType!,
-                typeParams: method.typeParams,
-              },
-            } satisfies TsTypeFnOrConstructorDef,
-          )
-        }`
-      )
-      .join(",\n");
+  private literalMethod(method: LiteralMethodDef): string {
+    console.log({ literalMethod: method });
+    return this.collect(
+      {
+        kind: "fnOrConstructor",
+        repr: "",
+        fnOrConstructor: {
+          constructor: false,
+          params: method.params,
+          tsType: method.returnType!,
+          typeParams: method.typeParams,
+        },
+      } satisfies TsTypeFnOrConstructorDef,
+    );
   }
 
   private *typeLiteralNode(
     node: TsTypeTypeLiteralDef,
   ): IterableIterator<string> {
-    const members = this.propertiesFromTypeElementArray(
-      node.typeLiteral.properties,
-      node.typeLiteral.methods,
-    );
+    // TODO: Figure out where methods are stored in the type literal.
+    const members = this.propertiesFromTypeElementArray([
+      ...node.typeLiteral.properties,
+      ...node.typeLiteral.methods,
+    ]);
     yield* `Type.Object(${members})`;
   }
 
