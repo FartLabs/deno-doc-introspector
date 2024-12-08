@@ -270,9 +270,6 @@ export class DenoDocToTypeBox {
     const C = this.collect(node.mappedType.typeParam.constraint);
     const readonly = node.mappedType.readonly !== undefined;
     const optional = node.mappedType.optional !== undefined;
-    // if (optional) {
-    // console.log("mappedType", { node });
-    // }
 
     // TODO: Verify values of mapped type.
     const isReadonlyTokenMinus = node.mappedType.readonly?.valueOf() === "-";
@@ -372,10 +369,6 @@ export class DenoDocToTypeBox {
   }
 
   private literalProperty(node: LiteralPropertyDef): string {
-    // if (node.name.startsWith("f")) {
-    //   console.log("literalProperty", { node });
-    // }
-
     return node.optional
       ? `Type.Optional(${this.collect(node.tsType)})`
       : this.collect(node.tsType);
@@ -429,9 +422,8 @@ export class DenoDocToTypeBox {
       .filter((member) => member.tsType?.kind !== "indexedAccess")
       .map((property) => `${property.name}: ${this.literalProperty(property)}`)
       .concat(
-        methodDefs.map((method) => {
-          console.log("Method:", { method });
-          return `${method.name}: ${
+        methodDefs.map((method) =>
+          `${method.name}: ${
             this.collect(
               {
                 repr: "",
@@ -444,11 +436,12 @@ export class DenoDocToTypeBox {
                 },
               } satisfies TsTypeFnOrConstructorDef,
             )
-          }`;
-        }),
+          }`
+        ),
       )
       .join(",\n");
 
+    // TODO: Read from indexSignatures
     const indexers = propertyDefs
       .filter((member) => member.tsType?.kind === "indexedAccess");
 
@@ -457,13 +450,12 @@ export class DenoDocToTypeBox {
       : "";
 
     // TODO: Fix additionalProperties.
-    if (propertyDefs.length === 0 && indexer.length > 0) {
-      return `{},\n{\nadditionalProperties: ${indexer}\n }`;
-    } else if (propertyDefs.length > 0 && indexer.length > 0) {
-      return `{\n${memberCollect}\n},\n{\nadditionalProperties: ${indexer}\n }`;
-    } else {
-      return `{\n${memberCollect}\n}`;
+    console.log({ indexer });
+    if (indexer.length > 0) {
+      return `{\n${memberCollect}\n},\n{\nadditionalProperties: ${indexer}\n}`;
     }
+
+    return `{\n${memberCollect}\n}`;
   }
 
   private *typeLiteralNode(
@@ -510,8 +502,6 @@ export class DenoDocToTypeBox {
         node.interfaceDef.methods,
       );
 
-      // console.log({ members });
-
       const names = node.interfaceDef.typeParams
         .map((param) => `${this.collect(param.constraint)}`)
         .join(", ");
@@ -533,13 +523,6 @@ export class DenoDocToTypeBox {
       // const options = this.useIdentifiers
       //   ? { ...this.resolveOptions(node), $id: identifier }
       //   : { ...this.resolveOptions(node) };
-      // console.log({ properties: node.interfaceDef.properties });
-
-      // The methods exist here.
-      // console.log({
-      //   properties: node.interfaceDef.properties,
-      //   methods: node.interfaceDef.methods,
-      // });
 
       const members = this.membersFromTypeElementArray(
         node.interfaceDef.properties,
@@ -876,6 +859,10 @@ export class DenoDocToTypeBox {
       return;
     }
 
+    if (node.kind === "interface" && node.name === "a2") {
+      console.log({ node });
+    }
+
     // TODO:
     // Implement missing cases like Block, ClassDeclaration, FunctionDeclaration,
     // HeritageClause, IndexSignatureDeclaration, ModuleDeclaration, ModuleBlock,
@@ -943,7 +930,6 @@ export class DenoDocToTypeBox {
         return yield* this.keywordNode(node);
       }
       case "function": {
-        console.log("Function:", node);
         return yield* this.functionDeclaration(node);
       }
       case "class": {
