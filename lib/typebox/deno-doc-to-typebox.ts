@@ -384,14 +384,17 @@ export class DenoDocToTypeBox {
   private *functionTypeNode(
     node: TsTypeFnOrConstructorDef,
   ): IterableIterator<string> {
-    // console.log("Function type node", { node });
-    const parameters = node.fnOrConstructor.params.map((
-      parameter,
-    ) => (parameter.kind === "rest"
-      ? `...Type.Rest(${this.collect(parameter.tsType)})`
-      : this.collect(parameter.tsType))
-    ).join(", ");
-    const returns = this.collect(node.fnOrConstructor.tsType);
+    const parameters = node.fnOrConstructor.params
+      .map((
+        parameter,
+      ) => (parameter.kind === "rest"
+        ? `...Type.Rest(${this.collect(parameter.tsType)})`
+        : this.collect(parameter.tsType))
+      )
+      .join(", ");
+    const returns = node.fnOrConstructor.tsType
+      ? this.collect(node.fnOrConstructor.tsType)
+      : "Type.Unknown()";
     yield `Type.Function([${parameters}], ${returns})`;
   }
 
@@ -426,8 +429,9 @@ export class DenoDocToTypeBox {
       .filter((member) => member.tsType?.kind !== "indexedAccess")
       .map((property) => `${property.name}: ${this.literalProperty(property)}`)
       .concat(
-        methodDefs.map((method) =>
-          `${method.name}: ${
+        methodDefs.map((method) => {
+          console.log("Method:", { method });
+          return `${method.name}: ${
             this.collect(
               {
                 repr: "",
@@ -440,8 +444,8 @@ export class DenoDocToTypeBox {
                 },
               } satisfies TsTypeFnOrConstructorDef,
             )
-          }`
-        ),
+          }`;
+        }),
       )
       .join(",\n");
 
