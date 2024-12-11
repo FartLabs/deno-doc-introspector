@@ -91,7 +91,10 @@ export class DenoDocToTypeBox {
           ts.isTypeAliasDeclaration(node)) && node.name.getText() === name) ||
           this.findTypeName(node, name);
       });
-    if (found) this.typenames.add(name);
+    if (found) {
+      this.typenames.add(name);
+    }
+
     return found;
   }
 
@@ -99,12 +102,10 @@ export class DenoDocToTypeBox {
     recursiveTypeNode: DocNodeInterface | DocNodeTypeAlias,
   ) {
     const check1 = recursiveTypeNode.kind === "typeAlias"
-      ? [recursiveTypeNode.typeAliasDef.tsType].some((node) =>
-        this.findRecursiveParent(recursiveTypeNode, node)
-      )
-      : recursiveTypeNode.interfaceDef.properties.some((node) =>
-        this.findRecursiveParent(recursiveTypeNode, node)
-      );
+      ? [recursiveTypeNode.typeAliasDef.tsType]
+        .some((node) => this.findRecursiveParent(recursiveTypeNode, node))
+      : recursiveTypeNode.interfaceDef.properties
+        .some((node) => this.findRecursiveParent(recursiveTypeNode, node));
     const check2 = recursiveTypeNode.kind === "interface" &&
       this.findRecursiveThis(recursiveTypeNode);
     return check1 || check2;
@@ -428,7 +429,6 @@ export class DenoDocToTypeBox {
       const type_1 = isRecursiveType
         ? `Type.Recursive(This => ${type_0})`
         : type_0;
-      // const type_2 = this.injectOptions(type_1, options);
       const staticDeclaration =
         `${exports}type ${node.name} = Static<typeof ${node.name}>`;
       const typeDeclaration = `${exports}const ${node.name} = ${type_1}`;
@@ -568,28 +568,6 @@ export class DenoDocToTypeBox {
 
     yield `Type.Literal(${node.repr})`;
   }
-
-  // private *namedTupleMember(
-  //   node: ts.NamedTupleMember,
-  // ): IterableIterator<string> {
-  //   yield* this.collect(node.type);
-  // }
-
-  // private *moduleDeclaration(
-  //   node: ts.ModuleDeclaration,
-  // ): IterableIterator<string> {
-  //   const exportSpecifier = this.isExport(node) ? "export " : "";
-  //   const moduleSpecifier = this.isNamespace(node) ? "namespace" : "module";
-  //   yield `${exportSpecifier}${moduleSpecifier} ${node.name.getText()} {`;
-  //   yield* this.visit(node.body);
-  //   yield `}`;
-  // }
-
-  // private *moduleBlock(node: ts.ModuleBlock): IterableIterator<string> {
-  //   for (const statement of node.statements) {
-  //     yield* this.visit(statement);
-  //   }
-  // }
 
   private *functionDeclaration(
     _node: DocNodeFunction,
@@ -757,7 +735,6 @@ export class DenoDocToTypeBox {
     this.useOptions = false;
     this.useGenerics = false;
     this.useCloneType = false;
-    // this.blockLevel = 0;
     const declarations = nodes
       .flatMap((node) => [...this.visit(node)])
       .join("\n\n");
