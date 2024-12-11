@@ -35,31 +35,28 @@ export class TypeScriptToTypeBoxError extends Error {
 }
 
 export interface DocNodesToTypeBoxOptions {
-  // useExportEverything?: boolean;
   useTypeBoxImport?: boolean;
-  // useIdentifiers?: boolean;
+  useStaticType?: boolean;
 
-  // TODO: Add option useStaticType.
+  // useExportEverything?: boolean;
+  // useIdentifiers?: boolean;
 }
 
-// TODO: Migrate to ts-morph for building TypeScript files, once tests pass.
+// TODO: Migrate to ts-morph for building TypeScript files, once tests pass!
 export class DenoDocToTypeBox {
   private typenames = new Set<string>();
   private recursiveDeclaration: DocNodeTypeAlias | DocNodeInterface | null =
     null;
-  // private blockLevel = 0;
   private useImports = true;
   private useOptions = false;
   private useGenerics = false;
   private useCloneType = false;
-  // private useExportsEverything = false;
-  // private useIdentifiers = false;
   private useTypeBoxImport = true;
+  private useStaticType = true;
 
   public constructor(options?: DocNodesToTypeBoxOptions) {
-    // this.useExportsEverything = options?.useExportEverything ?? false;
-    // this.useIdentifiers = options?.useIdentifiers ?? false;
     this.useTypeBoxImport = options?.useTypeBoxImport ?? true;
+    this.useStaticType = options?.useStaticType ?? true;
   }
 
   private findRecursiveParent(
@@ -266,7 +263,7 @@ export class DenoDocToTypeBox {
     const staticType =
       `${exports}type ${node.name} = Static<typeof ${node.name}>`;
     const type = `${exports}const ${node.name} = Type.Enum(Enum${node.name})`;
-    yield [enumType, "", staticType, type].join("\n");
+    yield [enumType, "", this.useStaticType ? staticType : "", type].join("\n");
   }
 
   private membersFromTypeElementArray(
@@ -386,7 +383,9 @@ export class DenoDocToTypeBox {
 
       const type = this.unwrapType(typeExpression);
       const typeDeclaration = `${exports}const ${node.name} = ${type}`;
-      yield `${staticDeclaration}\n${typeDeclaration}`;
+      yield `${
+        this.useStaticType ? staticDeclaration : ""
+      }\n${typeDeclaration}`;
     }
 
     this.recursiveDeclaration = null;
@@ -422,7 +421,9 @@ export class DenoDocToTypeBox {
       const typeDeclaration =
         `${exports}const ${node.name} = <${constraints}>(${parameters}) => ${type_1}`;
 
-      yield `${staticDeclaration}\n${typeDeclaration}`;
+      yield `${
+        this.useStaticType ? staticDeclaration : ""
+      }\n${typeDeclaration}`;
     } else {
       const exports = node.declarationKind === "export" ? "export " : "";
       const type_0 = this.collect(node.typeAliasDef.tsType);
@@ -433,7 +434,9 @@ export class DenoDocToTypeBox {
         `${exports}type ${node.name} = Static<typeof ${node.name}>`;
       const typeDeclaration = `${exports}const ${node.name} = ${type_1}`;
 
-      yield `${staticDeclaration}\n${typeDeclaration}`;
+      yield `${
+        this.useStaticType ? staticDeclaration : ""
+      }\n${typeDeclaration}`;
     }
 
     this.recursiveDeclaration = null;
@@ -711,8 +714,11 @@ export class DenoDocToTypeBox {
       return "";
     }
 
-    // TODO: Add option useStaticType.
-    const set = new Set<string>(["Type", "Static"]);
+    const set = new Set<string>(["Type"]);
+    if (this.useStaticType) {
+      set.add("Static");
+    }
+
     if (this.useGenerics) {
       set.add("TSchema");
     }
