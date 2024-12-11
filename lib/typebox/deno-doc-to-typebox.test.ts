@@ -51,24 +51,16 @@ Deno.test("DenoDocToTypeBox", async (t) => {
       " })\n" +
       "\n" +
       "type a = Static<typeof a>\n" +
-      "const a = Type.Object({\n" +
-      "\n" +
-      "})\n" +
+      "const a = Type.Object({})\n" +
       "\n" +
       "type b = Static<typeof b>\n" +
-      "const b = Type.Composite([a, Type.Object({\n" +
-      "\n" +
-      "})])\n" +
+      "const b = Type.Composite([a, Type.Object({})])\n" +
       "\n" +
       "type c = Static<typeof c>\n" +
-      "const c = Type.Composite([a, b, Type.Object({\n" +
-      "\n" +
-      "})])\n" +
+      "const c = Type.Composite([a, b, Type.Object({})])\n" +
       "\n" +
       "type d = Static<typeof d>\n" +
-      "const d = Type.Composite([a, Type.Object({\n" +
-      "\n" +
-      "})])";
+      "const d = Type.Composite([a, Type.Object({})])";
 
     assertEquals(actual, expected);
   });
