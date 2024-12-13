@@ -73,8 +73,8 @@ Deno.test("TypeScriptToTypeBox", async (t) => {
     assertEquals(actual, expected);
   });
 
-  await t.step("nested-interface.ts", async () => {
-    const sourceCode = await readTestFile("nested-interface.ts");
+  await t.step("interface-nested.ts", async () => {
+    const sourceCode = await readTestFile("interface-nested.ts");
     const actual = generator.generate(sourceCode);
     const expected = "import { Type, Static } from '@sinclair/typebox'\n" +
       "\n" +
@@ -84,6 +84,25 @@ Deno.test("TypeScriptToTypeBox", async (t) => {
       "bar: Type.Object({\n" +
       "baz: Type.String()\n" +
       "})\n" +
+      "})";
+
+    assertEquals(actual, expected);
+  });
+
+  await t.step("interface-extends.ts", async () => {
+    const sourceCode = await readTestFile("interface-extends.ts");
+    const actual = generator.generate(sourceCode);
+    const expected = "import { Type, Static } from '@sinclair/typebox'\n" +
+      "\n" +
+      "\n" +
+      "type Bar = Static<typeof Bar>\n" +
+      "const Bar = Type.Composite([Foo, Type.Object({\n" +
+      "bar: Type.String()\n" +
+      "})])\n" +
+      "\n" +
+      "type Foo = Static<typeof Foo>\n" +
+      "const Foo = Type.Object({\n" +
+      "foo: Type.String()\n" +
       "})";
 
     assertEquals(actual, expected);

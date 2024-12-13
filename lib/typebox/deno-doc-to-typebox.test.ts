@@ -65,8 +65,8 @@ Deno.test("DenoDocToTypeBox", async (t) => {
     assertEquals(actual, expected);
   });
 
-  await t.step("nested-interface.ts", () => {
-    const nodes = testDocNodes.get("nested-interface.ts")!;
+  await t.step("interface-nested.ts", () => {
+    const nodes = testDocNodes.get("interface-nested.ts")!;
     const actual = generator.generate(nodes);
     const expected = "import { Type, Static } from '@sinclair/typebox'\n" +
       "\n" +
