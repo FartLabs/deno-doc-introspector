@@ -80,4 +80,23 @@ Deno.test("DenoDocToTypeBox", async (t) => {
 
     assertEquals(actual, expected);
   });
+
+  await t.step("interface-extends.ts", () => {
+    const sourceCode = testDocNodes.get("interface-extends.ts")!;
+    const actual = generator.generate(sourceCode);
+    const expected = "import { Type, Static } from '@sinclair/typebox'\n" +
+      "\n" +
+      "\n" +
+      "type Bar = Static<typeof Bar>\n" +
+      "const Bar = Type.Composite([Foo, Type.Object({\n" +
+      "bar: Type.String()\n" +
+      "})])\n" +
+      "\n" +
+      "type Foo = Static<typeof Foo>\n" +
+      "const Foo = Type.Object({\n" +
+      "foo: Type.String()\n" +
+      "})";
+
+    assertEquals(actual, expected);
+  });
 });
