@@ -403,36 +403,36 @@ export class DenoDocToTypeBox {
     if (node.typeAliasDef.typeParams.length > 0) {
       this.useGenerics = true;
       const exports = node.declarationKind === "export" ? "export " : "";
-      const constraints = node.typeAliasDef.typeParams.map((param) =>
-        `${this.collect(param.constraint)} extends TSchema`
-      ).join(", ");
+      const constraints = node.typeAliasDef.typeParams
+        .map((param) => `${param.name} extends TSchema`)
+        .join(", ");
       const parameters = node.typeAliasDef.typeParams.map((param) =>
-        `${this.collect(param.constraint)}: ${this.collect(param.constraint)}`
+        `${param.name}: ${this.collect(param.constraint)}`
       ).join(", ");
-      const type_0 = this.collect(node.typeAliasDef.tsType);
-      const type_1 = isRecursiveType
-        ? `Type.Recursive(This => ${type_0})`
-        : type_0;
+      const type0 = this.collect(node.typeAliasDef.tsType);
+      const type1 = isRecursiveType
+        ? `Type.Recursive(This => ${type0})`
+        : type0;
       const names = node.typeAliasDef.typeParams
-        .map((param) => this.collect(param.constraint))
+        .map((param) => param.name)
         .join(", ");
       const staticDeclaration =
         `${exports}type ${node.name}<${constraints}> = Static<ReturnType<typeof ${node.name}<${names}>>>`;
       const typeDeclaration =
-        `${exports}const ${node.name} = <${constraints}>(${parameters}) => ${type_1}`;
+        `${exports}const ${node.name} = <${constraints}>(${parameters}) => ${type1}`;
 
       yield `${
         this.useStaticType ? staticDeclaration : ""
       }\n${typeDeclaration}`;
     } else {
       const exports = node.declarationKind === "export" ? "export " : "";
-      const type_0 = this.collect(node.typeAliasDef.tsType);
-      const type_1 = isRecursiveType
-        ? `Type.Recursive(This => ${type_0})`
-        : type_0;
+      const type0 = this.collect(node.typeAliasDef.tsType);
+      const type1 = isRecursiveType
+        ? `Type.Recursive(This => ${type0})`
+        : type0;
       const staticDeclaration =
         `${exports}type ${node.name} = Static<typeof ${node.name}>`;
-      const typeDeclaration = `${exports}const ${node.name} = ${type_1}`;
+      const typeDeclaration = `${exports}const ${node.name} = ${type1}`;
 
       yield `${
         this.useStaticType ? staticDeclaration : ""
