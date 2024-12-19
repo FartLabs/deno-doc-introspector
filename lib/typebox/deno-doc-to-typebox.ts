@@ -398,6 +398,9 @@ export class DenoDocToTypeBox {
     const isRecursiveType = this.isRecursiveType(node);
     if (isRecursiveType) {
       this.recursiveDeclaration = node;
+
+      // recursiveDeclaration is never set.
+      console.log({ isRecursiveType, recursive: this.recursiveDeclaration });
     }
 
     if (node.typeAliasDef.typeParams.length > 0) {
@@ -406,9 +409,9 @@ export class DenoDocToTypeBox {
       const constraints = node.typeAliasDef.typeParams
         .map((param) => `${param.name} extends TSchema`)
         .join(", ");
-      const parameters = node.typeAliasDef.typeParams.map((param) =>
-        `${param.name}: ${this.collect(param.constraint)}`
-      ).join(", ");
+      const parameters = node.typeAliasDef.typeParams
+        .map((param) => `${param.name}: ${param.name}`)
+        .join(", ");
       const type0 = this.collect(node.typeAliasDef.tsType);
       const type1 = isRecursiveType
         ? `Type.Recursive(This => ${type0})`
@@ -557,8 +560,14 @@ export class DenoDocToTypeBox {
         if (
           this.recursiveDeclaration !== null &&
           this.findRecursiveParent(this.recursiveDeclaration, node)
-        ) return yield `This`;
-        if (name in globalThis) return yield `Type.Never()`;
+        ) {
+          return yield `This`;
+        }
+
+        if (name in globalThis) {
+          return yield `Type.Never()`;
+        }
+
         return yield `${name}${args}`;
       }
     }
