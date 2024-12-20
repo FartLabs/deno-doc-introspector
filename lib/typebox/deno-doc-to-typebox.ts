@@ -18,6 +18,7 @@ import type {
   TsTypeIntersectionDef,
   TsTypeKeywordDef,
   TsTypeMappedDef,
+  TsTypeParamDef,
   TsTypeParenthesizedDef,
   TsTypeRestDef,
   TsTypeThisDef,
@@ -60,17 +61,29 @@ export class DenoDocToTypeBox {
   }
 
   private findRecursiveParent(
-    _recursiveTypeNode:
-      | DocNodeInterface
-      | DocNodeTypeAlias,
-    _node: DocNode | TsTypeDef | InterfacePropertyDef,
+    recursiveTypeNode: DocNodeInterface | DocNodeTypeAlias,
+    node: TsTypeDef | TsTypeParamDef | InterfacePropertyDef,
   ): boolean {
-    return false;
+    const recursiveTypeNodeRepr = recursiveTypeNode.kind === "typeAlias"
+      ? recursiveTypeNode.typeAliasDef.tsType.repr
+      : recursiveTypeNode.interfaceDef.defName;
 
-    // TODO: Fix this.
-    // return (ts.isTypeReferenceNode(node) &&
-    //   recursiveTypeNode.name.getText() === node.typeName.getText()) ||
-    //   node.getChildren().some((node) => this.findRecursiveParent(recursiveTypeNode, node));
+    const nodeRepr = "repr" in node ? node.repr : node.name;
+    if (recursiveTypeNodeRepr === nodeRepr) {
+      return true;
+    }
+
+    if ("tsType" in node && node.tsType !== undefined) {
+      return this.findRecursiveParent(recursiveTypeNode, node.tsType);
+    }
+
+    if ("typeParams" in node) {
+      return node.typeParams.some((param) =>
+        this.findRecursiveParent(recursiveTypeNode, param)
+      );
+    }
+
+    return false;
   }
 
   private findRecursiveThis(_node: DocNode | TsTypeDef): boolean {
