@@ -777,55 +777,55 @@ export class DenoDocToTypeBox {
 }
 
 // generateChildNodes generates all child nodes of a given node.
-function* generateChildNodes(node: DocNode): IterableIterator<DocNode> {
-  switch (node.kind) {
-    case "function": {
-      break;
-    }
+// function* generateChildNodes(node: DocNode): IterableIterator<DocNode> {
+//   switch (node.kind) {
+//     case "function": {
+//       break;
+//     }
 
-    case "moduleDoc": {
-      break;
-    }
+//     case "moduleDoc": {
+//       break;
+//     }
 
-    case "variable": {
-      break;
-    }
+//     case "variable": {
+//       break;
+//     }
 
-    case "enum": {
-      break;
-    }
+//     case "enum": {
+//       break;
+//     }
 
-    case "class": {
-      for (const methodDef of node.classDef.methods) {
-        // TODO: Get nodes from functionDef.
-        yield* generateChildNodes(methodDef.functionDef);
-      }
+//     case "class": {
+//       for (const methodDef of node.classDef.methods) {
+//         // TODO: Get nodes from functionDef.
+//         yield* generateChildNodes(methodDef.functionDef);
+//       }
 
-      // TODO: properties, indexSignatures, constructor, extends, implements, etc.
-      break;
-    }
+//       // TODO: properties, indexSignatures, constructor, extends, implements, etc.
+//       break;
+//     }
 
-    case "typeAlias": {
-      break;
-    }
+//     case "typeAlias": {
+//       break;
+//     }
 
-    case "namespace": {
-      break;
-    }
+//     case "namespace": {
+//       break;
+//     }
 
-    case "interface": {
-      break;
-    }
+//     case "interface": {
+//       break;
+//     }
 
-    case "import": {
-      break;
-    }
-  }
-}
+//     case "import": {
+//       break;
+//     }
+//   }
+// }
 
-type MethodDef = ClassMethodDef | InterfaceMethodDef | LiteralMethodDef;
-type PropertyDef = ClassPropertyDef | InterfacePropertyDef | LiteralPropertyDef;
-type IndexSignatureDef =
-  | ClassIndexSignatureDef
-  | InterfaceIndexSignatureDef
-  | LiteralIndexSignatureDef;
+// type MethodDef = ClassMethodDef | InterfaceMethodDef | LiteralMethodDef;
+// type PropertyDef = ClassPropertyDef | InterfacePropertyDef | LiteralPropertyDef;
+// type IndexSignatureDef =
+//   | ClassIndexSignatureDef
+//   | InterfaceIndexSignatureDef
+//   | LiteralIndexSignatureDef;
