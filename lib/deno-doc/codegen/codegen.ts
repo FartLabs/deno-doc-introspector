@@ -1,5 +1,8 @@
+import { exists } from "@std/fs/exists";
+import { toKebabCase } from "@std/text";
 import type { DocNode } from "@deno/doc";
 import { doc } from "@deno/doc";
+import type { SourceFile } from "ts-morph";
 import { Project } from "ts-morph";
 import { readDenoDoc, writeDenoDoc } from "./fs.ts";
 
@@ -14,65 +17,205 @@ if (downloadTypesDts) {
   await writeDenoDoc(typesDtsFile, typesDtsDocNodes);
 }
 
+const destinationDir = "./lib/deno-doc/generated";
+
 if (import.meta.main) {
   const project = new Project();
+  const dtsDocNodes = parseTypeReferenceNodes(typesDtsDocNodes);
+  await Deno.writeTextFile(
+    "./lib/deno-doc/example.txt",
+    typeReferenceNodesToMermaid(dtsDocNodes),
+  ); // TODO: remove.
+  await Deno.writeTextFile(
+    "./lib/deno-doc/example.json",
+    JSON.stringify(
+      Object.fromEntries(dtsDocNodes.entries().toArray()),
+      null,
+      2,
+    ),
+  ); // TODO: remove.
+
+  if (await exists(destinationDir)) {
+    await Deno.remove(destinationDir, { recursive: true });
+  }
+
+  // For each symbol, codegen a generator function that finds all references of that type in a node, recursively.
+  const sourceFiles: SourceFile[] = [];
+  for (const symbol of dtsDocNodes.keys()) {
+    sourceFiles.push(createWalkFile(project, dtsDocNodes, symbol));
+  }
+
+  await project.save();
+}
+
+function createWalkFile(
+  project: Project,
+  nodeMap: TypeReferenceNodeMap,
+  symbol: string,
+): SourceFile {
+  const nodes = nodeMap.get(symbol);
+  if (nodes === undefined) {
+    throw new Error(`node not found for symbol: ${symbol}`);
+  }
+
+  const walkFnIdentifier = makeWalkFnIdentifier(symbol);
   const sourceFile = project.createSourceFile(
-    "./lib/deno-doc/walk.ts",
+    `${destinationDir}/${toKebabCase(walkFnIdentifier)}.ts`,
     "",
     { overwrite: true },
   );
 
   sourceFile.addImportDeclaration({
     isTypeOnly: true,
-    namedImports: ["DocNode"],
+    namedImports: [symbol],
     moduleSpecifier: "@deno/doc",
   });
 
-  const dtsDocNodes = Object.fromEntries(
-    typesDtsDocNodes.map((docNode) => [docNode.name, parse(docNode)]),
-  );
-  await Deno.writeTextFile(
-    "./lib/deno-doc/example.json",
-    JSON.stringify(dtsDocNodes, null, 2),
-  );
-
-  sourceFile.addFunction({
-    name: "walk",
-    parameters: [{ name: "node", type: "DocNode" }],
+  const walkFn = sourceFile.addFunction({
+    name: walkFnIdentifier,
+    parameters: [{ name: "node", type: symbol }],
     isExported: true,
-    statements: [
-      `switch (node.kind) {`,
-      `}`,
-    ],
+    isGenerator: true,
   });
 
-  // for (const symbol of dts) {
-  // }
+  const importedWalkFnIdentifiers = new Set<string>();
+  for (const node of nodes) {
+    for (const typeName of node.typeNames ?? []) {
+      if (!nodeMap.has(typeName)) {
+        continue;
+      }
 
-  await sourceFile.save();
+      const walkFnIdentifier = makeWalkFnIdentifier(typeName);
+      importedWalkFnIdentifiers.add(walkFnIdentifier);
+      walkFn.addStatements(`yield* ${walkFnIdentifier}(node);`);
+    }
+
+    for (const property of node.properties ?? []) {
+      if (!nodeMap.has(property.typeName)) {
+        continue;
+      }
+
+      const walkFnIdentifier = makeWalkFnIdentifier(property.typeName);
+      importedWalkFnIdentifiers.add(walkFnIdentifier);
+      if (property.multiple) {
+        const iterableString = `node.${property.property}${
+          property.optional ? " ?? []" : ""
+        }`;
+        walkFn.addStatements([
+          `for (const value of ${iterableString}) {`,
+          `yield* ${walkFnIdentifier}(value);`,
+          `}`,
+        ]);
+      } else {
+        const yieldString =
+          `yield* ${walkFnIdentifier}(node.${property.property});`;
+        if (property.optional) {
+          walkFn.addStatements([
+            `if (node.${property.property} !== undefined) {`,
+            yieldString,
+            `}`,
+          ]);
+        } else {
+          walkFn.addStatements(yieldString);
+        }
+      }
+    }
+  }
+
+  for (const importedWalkFnIdentifier of importedWalkFnIdentifiers) {
+    sourceFile.addImportDeclaration({
+      namedImports: [importedWalkFnIdentifier],
+      moduleSpecifier: `./${toKebabCase(importedWalkFnIdentifier)}.ts`,
+    });
+  }
+
+  return sourceFile;
+}
+
+function makeWalkFnIdentifier(symbol: string): string {
+  return `walk${symbol}`;
+}
+
+function parseTypeReferenceNodes(docNodes: DocNode[]): TypeReferenceNodeMap {
+  const referenceNodes = docNodes.reduce((result, docNode) => {
+    const typeReferenceNode = parseTypeReferenceNode(docNode);
+    if (isEmpty(typeReferenceNode)) {
+      return result;
+    }
+
+    return result.set(
+      docNode.name,
+      [...result.get(docNode.name) ?? [], typeReferenceNode],
+    );
+  }, new Map<string, TypeReferenceNode[]>());
+
+  referenceNodes.forEach((nodes, key) => {
+    for (const node of nodes) {
+      node.typeNames = node.typeNames
+        ?.filter((typeName) => referenceNodes.has(typeName));
+      node.properties = node.properties
+        ?.filter((property) => referenceNodes.has(property.typeName));
+
+      if (isEmpty(node)) {
+        referenceNodes.delete(key);
+      }
+    }
+  });
+
+  return referenceNodes;
 }
 
 // parse parses top-level type references from the given doc node.
-function parse(docNode: DocNode): DocNodeTypeReference[] {
-  const nodes: DocNodeTypeReference[] = [];
+function parseTypeReferenceNode(docNode: DocNode): TypeReferenceNode {
   switch (docNode.kind) {
     case "typeAlias": {
-      if (docNode.typeAliasDef.tsType.kind !== "union") {
-        break;
-      }
+      switch (docNode.typeAliasDef.tsType.kind) {
+        case "intersection": {
+          const typeNames: string[] = [];
+          const properties: TypeReferenceNodeInterfaceProperty[] = [];
+          for (const tsTypeDef of docNode.typeAliasDef.tsType.intersection) {
+            switch (tsTypeDef.kind) {
+              case "typeRef": {
+                typeNames.push(tsTypeDef.typeRef.typeName);
+                break;
+              }
 
-      for (const tsTypeDef of docNode.typeAliasDef.tsType.union) {
-        if (tsTypeDef.kind !== "typeRef") {
-          continue;
+              case "typeLiteral": {
+                for (const property of tsTypeDef.typeLiteral.properties) {
+                  if (property.tsType?.kind !== "typeRef") {
+                    continue;
+                  }
+
+                  properties.push({
+                    multiple: false,
+                    optional: property.optional,
+                    property: property.name,
+                    typeName: property.tsType.typeRef.typeName,
+                  });
+                }
+
+                break;
+              }
+            }
+          }
+
+          return { typeNames, properties };
         }
 
-        nodes.push({ typeName: tsTypeDef.typeRef.typeName });
+        case "union": {
+          const typeNames = docNode.typeAliasDef.tsType.union
+            .filter((tsTypeDef) => tsTypeDef.kind === "typeRef")
+            .map((tsTypeDef) => tsTypeDef.typeRef.typeName);
+
+          return { typeNames };
+        }
       }
 
       break;
     }
 
     case "interface": {
+      const properties: TypeReferenceNodeInterfaceProperty[] = [];
       for (const interfacePropertyDef of docNode.interfaceDef.properties) {
         switch (interfacePropertyDef.tsType?.kind) {
           case "array": {
@@ -80,7 +223,7 @@ function parse(docNode: DocNode): DocNodeTypeReference[] {
               break;
             }
 
-            nodes.push({
+            properties.push({
               multiple: true,
               optional: interfacePropertyDef.optional,
               property: interfacePropertyDef.name,
@@ -91,7 +234,8 @@ function parse(docNode: DocNode): DocNodeTypeReference[] {
           }
 
           case "typeRef": {
-            nodes.push({
+            properties.push({
+              multiple: false,
               optional: interfacePropertyDef.optional,
               property: interfacePropertyDef.name,
               typeName: interfacePropertyDef.tsType.typeRef.typeName,
@@ -102,16 +246,88 @@ function parse(docNode: DocNode): DocNodeTypeReference[] {
         }
       }
 
-      break;
+      return { properties };
     }
   }
 
-  return nodes;
+  throw new Error(`unexpected doc node kind: ${docNode.kind}`);
 }
 
-interface DocNodeTypeReference {
-  optional?: boolean;
-  multiple?: boolean;
-  property?: string;
+type TypeReferenceNodeMap = Map<string, TypeReferenceNode[]>;
+
+interface TypeReferenceNode {
+  typeNames?: string[];
+  properties?: TypeReferenceNodeInterfaceProperty[];
+}
+
+// type TypeReferenceNode =
+//   | TypeReferenceNodeInterface
+//   | TypeReferenceNodeUnion
+//   | TypeReferenceNodeIntersection;
+
+// interface TypeReferenceNodeIntersection {
+//   kind: "intersection";
+//   typeNames: string[];
+//   properties: TypeReferenceNodeInterfaceProperty[];
+// }
+
+// interface TypeReferenceNodeInterface {
+//   kind: "interface";
+//   properties: TypeReferenceNodeInterfaceProperty[];
+// }
+
+interface TypeReferenceNodeInterfaceProperty {
+  optional: boolean;
+  multiple: boolean;
+  property: string;
   typeName: string;
+}
+
+// interface TypeReferenceNodeUnion {
+//   kind: "union";
+//   typeNames: string[];
+// }
+
+function typeReferenceNodesToMermaid(nodesMap: TypeReferenceNodeMap): string {
+  let mermaidString = "graph TD\n";
+
+  nodesMap.forEach((nodes, key) => {
+    nodes.forEach((node, index) => {
+      const nodeID = `${key}_${index}`;
+      for (const property of node.properties ?? []) {
+        if (!nodesMap.has(property.typeName)) {
+          continue;
+        }
+
+        const targetID = `${property.typeName}_${index}`;
+        mermaidString +=
+          `    ${nodeID}[${key}] -->|${property.property}| ${targetID}[${property.typeName}]\n`;
+      }
+
+      for (const typeName of node.typeNames ?? []) {
+        if (!nodesMap.has(typeName)) {
+          continue;
+        }
+
+        const targetID = `${typeName}_${index}`;
+        mermaidString +=
+          `    ${nodeID}[${key}] -->|Union| ${targetID}[${typeName}]\n`;
+      }
+
+      if (node.typeNames?.length === 0 && node.properties?.length === 0) {
+        mermaidString += `    ${nodeID}[${key}]\n`;
+      }
+    });
+  });
+
+  return mermaidString;
+}
+
+function isEmpty(referenceNode: TypeReferenceNode): boolean {
+  return (
+    (referenceNode.typeNames === undefined ||
+      referenceNode.typeNames.length === 0) &&
+    (referenceNode.properties === undefined ||
+      referenceNode.properties.length === 0)
+  );
 }
