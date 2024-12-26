@@ -4,6 +4,7 @@ import type { DocNode } from "@deno/doc";
 import { doc } from "@deno/doc";
 import type { SourceFile } from "ts-morph";
 import { Project } from "ts-morph";
+import { findDocNode } from "#/lib/deno-doc/find.ts";
 import { readDenoDoc, writeDenoDoc } from "./fs.ts";
 
 const typesDtsURL =
@@ -22,10 +23,6 @@ const destinationDir = "./lib/deno-doc/generated";
 if (import.meta.main) {
   const project = new Project();
   const dtsDocNodes = parseTypeReferenceNodes(typesDtsDocNodes);
-  await Deno.writeTextFile(
-    "./lib/deno-doc/example.txt",
-    typeReferenceNodesToMermaid(dtsDocNodes),
-  ); // TODO: remove.
   await Deno.writeTextFile(
     "./lib/deno-doc/example.json",
     JSON.stringify(
@@ -80,14 +77,22 @@ function createWalkFile(
 
   const importedWalkFnIdentifiers = new Set<string>();
   for (const node of nodes) {
-    for (const typeName of node.typeNames ?? []) {
-      if (!nodeMap.has(typeName)) {
+    for (let i = 0; i < (node.typeNames?.length ?? 0); i++) {
+      const typeName = node.typeNames?.[i];
+      if (typeName === undefined || !nodeMap.has(typeName)) {
         continue;
       }
 
       const walkFnIdentifier = makeWalkFnIdentifier(typeName);
       importedWalkFnIdentifiers.add(walkFnIdentifier);
-      walkFn.addStatements(`yield* ${walkFnIdentifier}(node);`);
+
+      const uniqueProperty = node.uniqueProperties?.[i]!;
+      walkFn.addStatements([
+        `if ("${uniqueProperty}" in node) {`,
+        `yield* ${walkFnIdentifier}(node);`,
+        `return;`,
+        `}`,
+      ]);
     }
 
     for (const property of node.properties ?? []) {
@@ -103,12 +108,13 @@ function createWalkFile(
         }`;
         walkFn.addStatements([
           `for (const value of ${iterableString}) {`,
+          `yield value;`,
           `yield* ${walkFnIdentifier}(value);`,
           `}`,
         ]);
       } else {
         const yieldString =
-          `yield* ${walkFnIdentifier}(node.${property.property});`;
+          `yield node.${property.property}; yield* ${walkFnIdentifier}(node.${property.property});`;
         if (property.optional) {
           walkFn.addStatements([
             `if (node.${property.property} !== undefined) {`,
@@ -155,17 +161,66 @@ function parseTypeReferenceNodes(docNodes: DocNode[]): TypeReferenceNodeMap {
         ?.filter((typeName) => referenceNodes.has(typeName));
       node.properties = node.properties
         ?.filter((property) => referenceNodes.has(property.typeName));
+      node.uniqueProperties = node.typeNames?.map((typeName) => {
+        const interfaceNode = findDocNode(
+          docNodes,
+          { kind: "interface", name: typeName },
+        );
+        if (interfaceNode !== undefined) {
+          const kind = interfaceNode.interfaceDef.properties
+            .find((property) => property.name === "kind")?.tsType?.kind!;
+          return [kind];
+        }
 
-      if (isEmpty(node)) {
-        referenceNodes.delete(key);
-      }
+        const typeAliasNode = findDocNode(
+          docNodes,
+          { kind: "typeAlias", name: typeName },
+        );
+        if (
+          typeAliasNode !== undefined &&
+          typeAliasNode.typeAliasDef.tsType.kind === "union"
+        ) {
+          return typeAliasNode.typeAliasDef.tsType.union
+            .map((tsTypeDef) => {
+              if (tsTypeDef.kind === "typeRef") {
+                const currentNode = findDocNode(
+                  docNodes,
+                  { kind: "interface", name: tsTypeDef.typeRef.typeName },
+                );
+
+                // console.dir({ currentNode }, { depth: null });
+                // throw new Error("not implemented");
+
+                // TODO: Fix.
+                return (currentNode as any).interfaceDef.properties
+                  .find((property: any) =>
+                    property.name === "kind" &&
+                    property.tsType?.kind === "literal" &&
+                    property.tsType.literal.kind === "string"
+                  )!.tsType.literal.string;
+              }
+
+              throw new Error(`unexpected ts type def kind: ${tsTypeDef.kind}`);
+            });
+        }
+
+        console.dir(
+          findDocNode(docNodes, { kind: "typeAlias", name: typeName }),
+          { depth: null },
+        );
+        throw new Error(`node not found for type name: ${typeName}`);
+      });
+    }
+
+    if (nodes.every((node) => isEmpty(node))) {
+      referenceNodes.delete(key);
     }
   });
 
   return referenceNodes;
 }
 
-// parse parses top-level type references from the given doc node.
+// parseTypeReferenceNode parses top-level type references from the given doc node.
 function parseTypeReferenceNode(docNode: DocNode): TypeReferenceNode {
   switch (docNode.kind) {
     case "typeAlias": {
@@ -207,6 +262,7 @@ function parseTypeReferenceNode(docNode: DocNode): TypeReferenceNode {
             .filter((tsTypeDef) => tsTypeDef.kind === "typeRef")
             .map((tsTypeDef) => tsTypeDef.typeRef.typeName);
 
+          // TODO: Add uniqueProperties.
           return { typeNames };
         }
       }
@@ -257,70 +313,15 @@ type TypeReferenceNodeMap = Map<string, TypeReferenceNode[]>;
 
 interface TypeReferenceNode {
   typeNames?: string[];
+  uniqueProperties?: string[][];
   properties?: TypeReferenceNodeInterfaceProperty[];
 }
-
-// type TypeReferenceNode =
-//   | TypeReferenceNodeInterface
-//   | TypeReferenceNodeUnion
-//   | TypeReferenceNodeIntersection;
-
-// interface TypeReferenceNodeIntersection {
-//   kind: "intersection";
-//   typeNames: string[];
-//   properties: TypeReferenceNodeInterfaceProperty[];
-// }
-
-// interface TypeReferenceNodeInterface {
-//   kind: "interface";
-//   properties: TypeReferenceNodeInterfaceProperty[];
-// }
 
 interface TypeReferenceNodeInterfaceProperty {
   optional: boolean;
   multiple: boolean;
   property: string;
   typeName: string;
-}
-
-// interface TypeReferenceNodeUnion {
-//   kind: "union";
-//   typeNames: string[];
-// }
-
-function typeReferenceNodesToMermaid(nodesMap: TypeReferenceNodeMap): string {
-  let mermaidString = "graph TD\n";
-
-  nodesMap.forEach((nodes, key) => {
-    nodes.forEach((node, index) => {
-      const nodeID = `${key}_${index}`;
-      for (const property of node.properties ?? []) {
-        if (!nodesMap.has(property.typeName)) {
-          continue;
-        }
-
-        const targetID = `${property.typeName}_${index}`;
-        mermaidString +=
-          `    ${nodeID}[${key}] -->|${property.property}| ${targetID}[${property.typeName}]\n`;
-      }
-
-      for (const typeName of node.typeNames ?? []) {
-        if (!nodesMap.has(typeName)) {
-          continue;
-        }
-
-        const targetID = `${typeName}_${index}`;
-        mermaidString +=
-          `    ${nodeID}[${key}] -->|Union| ${targetID}[${typeName}]\n`;
-      }
-
-      if (node.typeNames?.length === 0 && node.properties?.length === 0) {
-        mermaidString += `    ${nodeID}[${key}]\n`;
-      }
-    });
-  });
-
-  return mermaidString;
 }
 
 function isEmpty(referenceNode: TypeReferenceNode): boolean {
