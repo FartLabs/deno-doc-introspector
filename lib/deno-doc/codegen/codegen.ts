@@ -180,37 +180,74 @@ function parseTypeReferenceNodes(docNodes: DocNode[]): TypeReferenceNodeMap {
           typeAliasNode !== undefined &&
           typeAliasNode.typeAliasDef.tsType.kind === "union"
         ) {
+          // console.dir({ typeAliasNode }, { depth: null }); // TODO: remove.
+
           return typeAliasNode.typeAliasDef.tsType.union
             .map((tsTypeDef) => {
-              if (tsTypeDef.kind === "typeRef") {
-                const currentNode = findDocNode(
-                  docNodes,
-                  { kind: "interface", name: tsTypeDef.typeRef.typeName },
+              if (tsTypeDef.kind !== "typeRef") {
+                throw new Error(
+                  `unexpected ts type def kind: ${tsTypeDef.kind}`,
                 );
-
-                // console.dir({ currentNode }, { depth: null });
-                // throw new Error("not implemented");
-
-                // TODO: Fix.
-                return (currentNode as any).interfaceDef.properties
-                  .find((property: any) =>
-                    property.name === "kind" &&
-                    property.tsType?.kind === "literal" &&
-                    property.tsType.literal.kind === "string"
-                  )!.tsType.literal.string;
               }
 
-              throw new Error(`unexpected ts type def kind: ${tsTypeDef.kind}`);
+              const currentNode = findDocNode(
+                docNodes,
+                { name: tsTypeDef.typeRef.typeName },
+              );
+              if (
+                currentNode === undefined || currentNode.kind !== "interface"
+              ) {
+                throw new Error(
+                  `node not found for type name: ${tsTypeDef.typeRef.typeName}`,
+                );
+              }
+
+              const currentProperty = currentNode.interfaceDef.properties
+                .find((property) => property.name === "kind");
+              if (currentProperty?.tsType?.kind !== "literal") {
+                throw new Error("unexpected ts type def kind");
+              }
+
+              return currentProperty.tsType.repr;
             });
+
+          // throw new Error("not implemented");
         }
 
-        console.dir(
-          findDocNode(docNodes, { kind: "typeAlias", name: typeName }),
-          { depth: null },
-        );
         throw new Error(`node not found for type name: ${typeName}`);
       });
+
+      // return typeAliasNode.typeAliasDef.tsType.union
+      //   .map((tsTypeDef) => {
+      //     if (tsTypeDef.kind === "typeRef") {
+      //       const currentNode = findDocNode(
+      //         docNodes,
+      //         { kind: "interface", name: tsTypeDef.typeRef.typeName },
+      //       );
+
+      //       // console.dir({ currentNode }, { depth: null });
+      //       // throw new Error("not implemented");
+
+      //       // TODO: Fix.
+      //       return (currentNode as any).interfaceDef.properties
+      //         .find((property: any) =>
+      //           property.name === "kind" &&
+      //           property.tsType?.kind === "literal" &&
+      //           property.tsType.literal.kind === "string"
+      //         )!.tsType.literal.string;
+      //     }
+
+      //     throw new Error(`unexpected ts type def kind: ${tsTypeDef.kind}`);
+      //   });
     }
+
+    // console.dir(
+    //   findDocNode(docNodes, { kind: "typeAlias", name: typeName }),
+    //   { depth: null },
+    // );
+    //     throw new Error(`node not found for type name: ${typeName}`);
+    //   });
+    // }
 
     if (nodes.every((node) => isEmpty(node))) {
       referenceNodes.delete(key);
