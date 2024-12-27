@@ -85,14 +85,14 @@ function createWalkFile(
 
       const walkFnIdentifier = makeWalkFnIdentifier(typeName);
       importedWalkFnIdentifiers.add(walkFnIdentifier);
-
-      const uniqueProperty = node.uniqueProperties?.[i]!;
-      walkFn.addStatements([
-        `if ("${uniqueProperty}" in node) {`,
-        `yield* ${walkFnIdentifier}(node);`,
-        `return;`,
-        `}`,
-      ]);
+      for (const kind of node.kinds?.[i]!) {
+        walkFn.addStatements([
+          `if (node.kind === "${kind}") {`,
+          `yield* ${walkFnIdentifier}(node);`,
+          `return;`,
+          `}`,
+        ]);
+      }
     }
 
     for (const property of node.properties ?? []) {
@@ -161,93 +161,50 @@ function parseTypeReferenceNodes(docNodes: DocNode[]): TypeReferenceNodeMap {
         ?.filter((typeName) => referenceNodes.has(typeName));
       node.properties = node.properties
         ?.filter((property) => referenceNodes.has(property.typeName));
-      node.uniqueProperties = node.typeNames?.map((typeName) => {
-        const interfaceNode = findDocNode(
-          docNodes,
-          { kind: "interface", name: typeName },
-        );
-        if (interfaceNode !== undefined) {
-          const kind = interfaceNode.interfaceDef.properties
+      node.kinds = node.typeNames?.map((typeName) => {
+        const currentNode = findDocNode(docNodes, { name: typeName });
+        if (currentNode === undefined) {
+          throw new Error(`node not found for type name: ${typeName}`);
+        }
+
+        if (currentNode.kind === "interface") {
+          const kind = currentNode.interfaceDef.properties
             .find((property) => property.name === "kind")?.tsType?.kind!;
           return [kind];
         }
 
-        const typeAliasNode = findDocNode(
-          docNodes,
-          { kind: "typeAlias", name: typeName },
-        );
         if (
-          typeAliasNode !== undefined &&
-          typeAliasNode.typeAliasDef.tsType.kind === "union"
+          currentNode.kind === "typeAlias" &&
+          currentNode.typeAliasDef.tsType.kind === "union"
         ) {
-          // console.dir({ typeAliasNode }, { depth: null }); // TODO: remove.
-
-          return typeAliasNode.typeAliasDef.tsType.union
-            .map((tsTypeDef) => {
-              if (tsTypeDef.kind !== "typeRef") {
-                throw new Error(
-                  `unexpected ts type def kind: ${tsTypeDef.kind}`,
-                );
-              }
-
-              const currentNode = findDocNode(
-                docNodes,
-                { name: tsTypeDef.typeRef.typeName },
+          return currentNode.typeAliasDef.tsType.union.map((tsTypeDef) => {
+            if (tsTypeDef.kind !== "typeRef") {
+              throw new Error(
+                `unexpected ts type def kind: ${tsTypeDef.kind}`,
               );
-              if (
-                currentNode === undefined || currentNode.kind !== "interface"
-              ) {
-                throw new Error(
-                  `node not found for type name: ${tsTypeDef.typeRef.typeName}`,
-                );
-              }
+            }
 
-              const currentProperty = currentNode.interfaceDef.properties
-                .find((property) => property.name === "kind");
-              if (currentProperty?.tsType?.kind !== "literal") {
-                throw new Error("unexpected ts type def kind");
-              }
+            const currentCurrentNode = findDocNode(
+              docNodes,
+              { name: tsTypeDef.typeRef.typeName },
+            );
+            if (
+              currentCurrentNode === undefined ||
+              currentCurrentNode.kind !== "interface"
+            ) {
+              throw new Error(
+                `node not found for type name: ${tsTypeDef.typeRef.typeName}`,
+              );
+            }
 
-              return currentProperty.tsType.repr;
-            });
-
-          // throw new Error("not implemented");
+            return currentCurrentNode.interfaceDef.properties
+              .find((property) => property.name === "kind")?.tsType?.repr!;
+          });
         }
 
         throw new Error(`node not found for type name: ${typeName}`);
       });
-
-      // return typeAliasNode.typeAliasDef.tsType.union
-      //   .map((tsTypeDef) => {
-      //     if (tsTypeDef.kind === "typeRef") {
-      //       const currentNode = findDocNode(
-      //         docNodes,
-      //         { kind: "interface", name: tsTypeDef.typeRef.typeName },
-      //       );
-
-      //       // console.dir({ currentNode }, { depth: null });
-      //       // throw new Error("not implemented");
-
-      //       // TODO: Fix.
-      //       return (currentNode as any).interfaceDef.properties
-      //         .find((property: any) =>
-      //           property.name === "kind" &&
-      //           property.tsType?.kind === "literal" &&
-      //           property.tsType.literal.kind === "string"
-      //         )!.tsType.literal.string;
-      //     }
-
-      //     throw new Error(`unexpected ts type def kind: ${tsTypeDef.kind}`);
-      //   });
     }
-
-    // console.dir(
-    //   findDocNode(docNodes, { kind: "typeAlias", name: typeName }),
-    //   { depth: null },
-    // );
-    //     throw new Error(`node not found for type name: ${typeName}`);
-    //   });
-    // }
 
     if (nodes.every((node) => isEmpty(node))) {
       referenceNodes.delete(key);
@@ -350,7 +307,7 @@ type TypeReferenceNodeMap = Map<string, TypeReferenceNode[]>;
 
 interface TypeReferenceNode {
   typeNames?: string[];
-  uniqueProperties?: string[][];
+  kinds?: string[][];
   properties?: TypeReferenceNodeInterfaceProperty[];
 }
 
