@@ -23,15 +23,6 @@ const destinationDir = "./lib/deno-doc/generated";
 if (import.meta.main) {
   const project = new Project();
   const dtsDocNodes = parseTypeReferenceNodes(typesDtsDocNodes);
-  await Deno.writeTextFile(
-    "./lib/deno-doc/example.json",
-    JSON.stringify(
-      Object.fromEntries(dtsDocNodes.entries().toArray()),
-      null,
-      2,
-    ),
-  ); // TODO: remove.
-
   if (await exists(destinationDir)) {
     await Deno.remove(destinationDir, { recursive: true });
   }
@@ -73,7 +64,12 @@ function createWalkFile(
     parameters: [{ name: "node", type: symbol }],
     isExported: true,
     isGenerator: true,
+    returnType: "Generator<unknown, void, unknown>",
   });
+
+  if (symbol === "LiteralDef") {
+    return sourceFile;
+  }
 
   const importedWalkFnIdentifiers = new Set<string>();
   for (const node of nodes) {
@@ -83,13 +79,18 @@ function createWalkFile(
         continue;
       }
 
+      const currentNode = findDocNode(typesDtsDocNodes, { name: typeName });
+      if (currentNode === undefined) {
+        throw new Error(`node not found for type name: ${typeName}`);
+      }
+
       const walkFnIdentifier = makeWalkFnIdentifier(typeName);
       importedWalkFnIdentifiers.add(walkFnIdentifier);
+
       for (const kind of node.kinds?.[i]!) {
         walkFn.addStatements([
           `if (node.kind === "${kind}") {`,
-          `yield* ${walkFnIdentifier}(node);`,
-          `return;`,
+          `return yield* ${walkFnIdentifier}(node);`,
           `}`,
         ]);
       }
@@ -106,10 +107,10 @@ function createWalkFile(
         const iterableString = `node.${property.property}${
           property.optional ? " ?? []" : ""
         }`;
+        const yieldString = `yield value; yield* ${walkFnIdentifier}(value);`;
         walkFn.addStatements([
           `for (const value of ${iterableString}) {`,
-          `yield value;`,
-          `yield* ${walkFnIdentifier}(value);`,
+          yieldString,
           `}`,
         ]);
       } else {
@@ -145,10 +146,6 @@ function makeWalkFnIdentifier(symbol: string): string {
 function parseTypeReferenceNodes(docNodes: DocNode[]): TypeReferenceNodeMap {
   const referenceNodes = docNodes.reduce((result, docNode) => {
     const typeReferenceNode = parseTypeReferenceNode(docNode);
-    if (isEmpty(typeReferenceNode)) {
-      return result;
-    }
-
     return result.set(
       docNode.name,
       [...result.get(docNode.name) ?? [], typeReferenceNode],
@@ -157,10 +154,10 @@ function parseTypeReferenceNodes(docNodes: DocNode[]): TypeReferenceNodeMap {
 
   referenceNodes.forEach((nodes, key) => {
     for (const node of nodes) {
-      node.typeNames = node.typeNames
-        ?.filter((typeName) => referenceNodes.has(typeName));
       node.properties = node.properties
         ?.filter((property) => referenceNodes.has(property.typeName));
+      node.typeNames = node.typeNames
+        ?.filter((typeName) => referenceNodes.has(typeName));
       node.kinds = node.typeNames?.map((typeName) => {
         const currentNode = findDocNode(docNodes, { name: typeName });
         if (currentNode === undefined) {
@@ -169,7 +166,7 @@ function parseTypeReferenceNodes(docNodes: DocNode[]): TypeReferenceNodeMap {
 
         if (currentNode.kind === "interface") {
           const kind = currentNode.interfaceDef.properties
-            .find((property) => property.name === "kind")?.tsType?.kind!;
+            .find((property) => property.name === "kind")?.tsType?.repr!;
           return [kind];
         }
 
