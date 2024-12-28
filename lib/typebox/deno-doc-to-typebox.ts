@@ -1,8 +1,5 @@
 import * as ts from "typescript";
 import type {
-  ClassIndexSignatureDef,
-  ClassMethodDef,
-  ClassPropertyDef,
   DocNode,
   DocNodeClass,
   DocNodeEnum,
@@ -10,9 +7,6 @@ import type {
   DocNodeInterface,
   DocNodeTypeAlias,
   InterfaceIndexSignatureDef,
-  InterfaceMethodDef,
-  InterfacePropertyDef,
-  LiteralIndexSignatureDef,
   LiteralMethodDef,
   LiteralPropertyDef,
   TsTypeArrayDef,
@@ -23,7 +17,6 @@ import type {
   TsTypeIntersectionDef,
   TsTypeKeywordDef,
   TsTypeMappedDef,
-  TsTypeParamDef,
   TsTypeParenthesizedDef,
   TsTypeRestDef,
   TsTypeThisDef,
@@ -33,6 +26,7 @@ import type {
   TsTypeTypeRefDef,
   TsTypeUnionDef,
 } from "@deno/doc";
+import { checkRecursive } from "#/lib/deno-doc/check-recursive.ts";
 
 export class TypeScriptToTypeBoxError extends Error {
   constructor(public readonly diagnostics: ts.Diagnostic[]) {
@@ -81,48 +75,7 @@ export class DenoDocToTypeBox {
 
   // https://github.com/sinclairzx81/typebox-codegen/blob/7a859390ab29032156d8da260038b45cf63fc5a4/src/typescript/typescript-to-typebox.ts#L111
   private isRecursiveType(node: DocNodeInterface | DocNodeTypeAlias): boolean {
-    return false;
-
-    // TODO: Implement this using DocNode API instead of TypeScript AST.
-    // const check1 = Ts.isTypeAliasDeclaration(decl)
-    //   ? [decl.type].some((node) => FindRecursiveParent(decl, node))
-    //   : decl.members.some((node) => FindRecursiveParent(decl, node));
-    // const check2 = Ts.isInterfaceDeclaration(decl) && FindRecursiveThis(decl);
-    // return check1 || check2;
-  }
-
-  private findRecursiveParent(
-    parent:
-      | DocNodeInterface
-      | DocNodeTypeAlias,
-    child: DocNode,
-  ): boolean {
-    // The isTypeReferenceNode function in the TypeScript API is used to check if a given node in the Abstract Syntax Tree (AST) represents a type reference.
-    // We can substitute this with a check to see if the parent and child nodes have the same name.
-    const isTypeReferenceNode = parent.name === child.name;
-    if (isTypeReferenceNode) {
-      return true;
-    }
-
-    // TODO: Check if some child of the child node is recursive with the parent node.
-    const hasRecursiveParent = false;
-    return hasRecursiveParent;
-
-    // TODO: Implement this using DocNode API instead of TypeScript AST.
-    // The FindRecursiveParent function checks if a given TypeScript node is a recursive parent of a specified interface or type alias declaration.
-    // return (Ts.isTypeReferenceNode(node) &&
-    //   decl.name.getText() === node.typeName.getText()) ||
-    //   node.getChildren().some((node) => FindRecursiveParent(decl, node));
-  }
-
-  private findRecursiveThis(node: DocNode): boolean {
-    return false;
-
-    // TODO: Implement this using DocNode API instead of TypeScript AST.
-    // The function recursively searches through the children of a given AST node to determine if any of them, or their descendants, are ThisTypeNodes
-    // return node
-    //   .getChildren()
-    //   .some((node) => Ts.isThisTypeNode(node) || FindRecursiveThis(node));
+    return checkRecursive(node);
   }
 
   private unwrapModifier(type: string) {
@@ -416,8 +369,8 @@ export class DenoDocToTypeBox {
     if (isRecursiveType) {
       this.recursiveDeclaration = node;
 
-      // recursiveDeclaration is never set.
-      console.log({ isRecursiveType, recursive: this.recursiveDeclaration });
+      // TODO: Remove.
+      // console.log({ isRecursiveType, recursive: this.recursiveDeclaration });
     }
 
     if (node.typeAliasDef.typeParams.length > 0) {
@@ -576,7 +529,7 @@ export class DenoDocToTypeBox {
       default: {
         if (
           this.recursiveDeclaration !== null &&
-          this.findRecursiveParent(this.recursiveDeclaration, node)
+          this.recursiveDeclaration.name === node.typeRef.typeName
         ) {
           return yield `This`;
         }
