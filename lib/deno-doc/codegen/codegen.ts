@@ -28,9 +28,8 @@ if (import.meta.main) {
   }
 
   // For each symbol, codegen a generator function that finds all references of that type in a node, recursively.
-  const sourceFiles: SourceFile[] = [];
   for (const symbol of dtsDocNodes.keys()) {
-    sourceFiles.push(createWalkFile(project, dtsDocNodes, symbol));
+    createWalkFile(project, dtsDocNodes, symbol);
   }
 
   await project.save();
@@ -253,7 +252,7 @@ function parseTypeReferenceNode(docNode: DocNode): TypeReferenceNode {
             .filter((tsTypeDef) => tsTypeDef.kind === "typeRef")
             .map((tsTypeDef) => tsTypeDef.typeRef.typeName);
 
-          // TODO: Add uniqueProperties.
+          // TODO: Add kinds.
           return { typeNames };
         }
       }

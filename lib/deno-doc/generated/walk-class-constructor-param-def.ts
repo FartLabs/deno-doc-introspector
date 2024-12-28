@@ -1,13 +1,11 @@
 import type { ClassConstructorParamDef } from "@deno/doc";
 import { walkParamDef } from "./walk-param-def.ts";
-import { walkParamArrayDef } from "#/lib/deno-doc/generated/walk-param-array-def.ts";
 
 export function* walkClassConstructorParamDef(
   node: ClassConstructorParamDef,
 ): Generator<unknown, void, unknown> {
   if (node.kind === "array") {
-    // TODO: Fix.
-    return yield* walkParamArrayDef(node);
+    return yield* walkParamDef(node);
   }
   if (node.kind === "assign") {
     return yield* walkParamDef(node);
