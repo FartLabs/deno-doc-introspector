@@ -262,4 +262,22 @@ Deno.test("DenoDocToTypeBox", async (t) => {
       assertEquals(actual, expected);
     },
   );
+
+  await t.step(
+    "class-interface-compat.ts",
+    () => {
+      const nodes = testDocNodes.get("class-interface-compat.ts")!;
+      const actual = generator.generate(nodes);
+      const expected = "import { Type, Static } from '@sinclair/typebox'\n" +
+        "\n" +
+        // TODO: Support class node.
+        "\n" +
+        "export type AnimalInterface = Static<typeof AnimalInterface>\n" +
+        "export const AnimalInterface = Type.Object({\n" +
+        "name: Type.String(),\n" +
+        "age: Type.Number()\n" +
+        "})";
+      assertEquals(actual, expected);
+    },
+  );
 });
