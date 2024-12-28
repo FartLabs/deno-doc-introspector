@@ -189,13 +189,14 @@ Deno.test("DenoDocToTypeBox", async (t) => {
       "import { Type, Static, TSchema } from '@sinclair/typebox'\n" +
       "\n" +
       "\n" +
+      "export type SubFoo<R extends TSchema> = Static<ReturnType<typeof SubFoo<R>>>\n" +
+      "export const SubFoo = <R extends TSchema>(R: R) => Foo(Type.String(), R)" +
+      "\n" +
+      "\n" +
       "type Foo<T extends TSchema, Y extends TSchema> = Static<ReturnType<typeof Foo<T, Y>>>\n" +
       "const Foo = <T extends TSchema, Y extends TSchema>(T: T, Y: Y) => Type.Recursive(This => Type.Object({\n" +
       "foo: Type.Function([], This)\n" +
-      "}))\n" +
-      "\n" +
-      "export type SubFoo<R extends TSchema> = Static<ReturnType<typeof SubFoo<R>>>\n" +
-      "export const SubFoo = <R extends TSchema>(R: R) => Foo(Type.String(), R)";
+      "}))";
     assertEquals(actual, expected);
   });
 
