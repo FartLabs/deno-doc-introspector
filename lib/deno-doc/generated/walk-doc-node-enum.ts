@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { DocNodeEnum } from "@deno/doc";
 import { walkEnumDef } from "./walk-enum-def.ts";
 

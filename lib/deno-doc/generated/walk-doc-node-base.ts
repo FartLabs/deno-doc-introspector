@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { DocNodeBase } from "@deno/doc";
 import { walkJsDoc } from "./walk-js-doc.ts";
 

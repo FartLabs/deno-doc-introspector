@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { TsInferDef } from "@deno/doc";
 import { walkTsTypeParamDef } from "./walk-ts-type-param-def.ts";
 

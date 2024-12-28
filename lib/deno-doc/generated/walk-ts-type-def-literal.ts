@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { TsTypeDefLiteral } from "@deno/doc";
 import { walkLiteralDef } from "./walk-literal-def.ts";
 

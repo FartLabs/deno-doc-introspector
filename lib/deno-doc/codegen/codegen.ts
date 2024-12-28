@@ -135,6 +135,7 @@ function createWalkFile(
     });
   }
 
+  sourceFile.insertText(0, "// Notice: Do NOT edit this generated file.\n");
   return sourceFile;
 }
 

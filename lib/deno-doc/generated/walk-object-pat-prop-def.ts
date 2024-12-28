@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { ObjectPatPropDef } from "@deno/doc";
 import { walkObjectPatPropKeyValueDef } from "./walk-object-pat-prop-key-value-def.ts";
 import { walkObjectPatPropRestDef } from "./walk-object-pat-prop-rest-def.ts";

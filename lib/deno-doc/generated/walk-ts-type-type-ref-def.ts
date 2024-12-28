@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { TsTypeTypeRefDef } from "@deno/doc";
 import { walkTsTypeRefDef } from "./walk-ts-type-ref-def.ts";
 

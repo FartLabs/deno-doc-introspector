@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { ParamObjectDef } from "@deno/doc";
 import { walkObjectPatPropDef } from "./walk-object-pat-prop-def.ts";
 import { walkDecoratorDef } from "./walk-decorator-def.ts";

@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { NamespaceDef } from "@deno/doc";
 import { walkDocNode } from "./walk-doc-node.ts";
 

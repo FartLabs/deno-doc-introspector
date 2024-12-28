@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { ParamRestDef } from "@deno/doc";
 import { walkParamDef } from "./walk-param-def.ts";
 import { walkDecoratorDef } from "./walk-decorator-def.ts";

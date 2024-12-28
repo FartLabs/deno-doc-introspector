@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { EnumDef } from "@deno/doc";
 import { walkEnumMemberDef } from "./walk-enum-member-def.ts";
 

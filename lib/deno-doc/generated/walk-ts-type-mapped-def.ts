@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { TsTypeMappedDef } from "@deno/doc";
 import { walkTsMappedTypeDef } from "./walk-ts-mapped-type-def.ts";
 

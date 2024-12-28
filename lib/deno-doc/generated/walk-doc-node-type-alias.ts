@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { DocNodeTypeAlias } from "@deno/doc";
 import { walkTypeAliasDef } from "./walk-type-alias-def.ts";
 

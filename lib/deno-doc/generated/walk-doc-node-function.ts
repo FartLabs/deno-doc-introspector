@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { DocNodeFunction } from "@deno/doc";
 import { walkFunctionDef } from "./walk-function-def.ts";
 

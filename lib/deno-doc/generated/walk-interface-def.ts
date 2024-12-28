@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { InterfaceDef } from "@deno/doc";
 import { walkTsTypeDef } from "./walk-ts-type-def.ts";
 import { walkInterfaceMethodDef } from "./walk-interface-method-def.ts";

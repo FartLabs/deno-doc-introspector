@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { ClassConstructorDef } from "@deno/doc";
 import { walkJsDoc } from "./walk-js-doc.ts";
 import { walkClassConstructorParamDef } from "./walk-class-constructor-param-def.ts";

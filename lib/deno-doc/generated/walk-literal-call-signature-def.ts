@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { LiteralCallSignatureDef } from "@deno/doc";
 import { walkParamDef } from "./walk-param-def.ts";
 import { walkTsTypeDef } from "./walk-ts-type-def.ts";

@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { TsFnOrConstructorDef } from "@deno/doc";
 import { walkTsTypeDef } from "./walk-ts-type-def.ts";
 import { walkParamDef } from "./walk-param-def.ts";

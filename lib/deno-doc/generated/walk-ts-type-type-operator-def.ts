@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { TsTypeTypeOperatorDef } from "@deno/doc";
 import { walkTsTypeOperatorDef } from "./walk-ts-type-operator-def.ts";
 

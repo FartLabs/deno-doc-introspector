@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { ClassDef } from "@deno/doc";
 import { walkClassConstructorDef } from "./walk-class-constructor-def.ts";
 import { walkClassPropertyDef } from "./walk-class-property-def.ts";

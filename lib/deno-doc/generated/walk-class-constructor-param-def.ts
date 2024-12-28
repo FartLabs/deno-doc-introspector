@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { ClassConstructorParamDef } from "@deno/doc";
 import { walkParamDef } from "./walk-param-def.ts";
 

@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { ParamDef } from "@deno/doc";
 import { walkParamArrayDef } from "./walk-param-array-def.ts";
 import { walkParamAssignDef } from "./walk-param-assign-def.ts";

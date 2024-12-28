@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { DocNodeInterface } from "@deno/doc";
 import { walkInterfaceDef } from "./walk-interface-def.ts";
 

@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { TsTypeIndexedAccessDef } from "@deno/doc";
 import { walkTsIndexedAccessDef } from "./walk-ts-indexed-access-def.ts";
 

@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { DocNodeVariable } from "@deno/doc";
 import { walkVariableDef } from "./walk-variable-def.ts";
 

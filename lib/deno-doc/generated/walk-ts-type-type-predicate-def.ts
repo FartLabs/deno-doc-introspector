@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { TsTypeTypePredicateDef } from "@deno/doc";
 import { walkTsTypePredicateDef } from "./walk-ts-type-predicate-def.ts";
 

@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { DocNodeClass } from "@deno/doc";
 import { walkClassDef } from "./walk-class-def.ts";
 

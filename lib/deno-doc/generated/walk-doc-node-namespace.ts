@@ -1,3 +1,4 @@
+// Notice: Do NOT edit this generated file.
 import type { DocNodeNamespace } from "@deno/doc";
 import { walkNamespaceDef } from "./walk-namespace-def.ts";
 
