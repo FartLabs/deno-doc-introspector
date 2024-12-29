@@ -14,9 +14,11 @@ export const testdataDocNodesByFilename = new Map<string, DocNode[]>(
   await Promise.all(
     testdataWalkEntries.map(async (file): Promise<[string, DocNode[]]> => [
       file.name,
-      await doc(
-        import.meta.resolve(`./testdata/${file.name}`),
-      ),
+      await getDocNodes(import.meta.resolve(`./testdata/${file.name}`)),
     ]),
   ),
 );
+
+async function getDocNodes(url: string): Promise<DocNode[]> {
+  return Object.values(await doc([url])).at(0)!;
+}
