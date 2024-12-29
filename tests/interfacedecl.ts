@@ -3,25 +3,24 @@
 //
 
 interface a0 {
-    p1;
-    p2: string;
-    p3?;
-    p4?: number;
-    p5: (s: number) =>string;
+  p1;
+  p2: string;
+  p3?;
+  p4?: number;
+  p5: (s: number) => string;
 
-    f1();
-    f2? ();
-    f3(a: string): number;
-    f4? (s: number): string;
+  f1();
+  f2?();
+  f3(a: string): number;
+  f4?(s: number): string;
 }
 
-
 interface a1 {
-    [n: number]: number;
+  [n: number]: number;
 }
 
 interface a2 {
-    [s: string]: number;
+  [s: string]: number;
 }
 
 interface a {

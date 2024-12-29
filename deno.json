@@ -1,18 +1,21 @@
 {
   "lock": false,
   "tasks": {
-    "generate": "deno --allow-read --allow-write --allow-env --allow-net lib/deno-doc/codegen/codegen.ts && deno fmt lib/deno-doc/generated/*.ts",
+    "generate": "deno --allow-read --allow-write --allow-env --allow-net lib/deno-doc/codegen/codegen.ts && deno fmt lib/deno-doc/generated/**/*.ts",
     "test": "deno test --allow-import --allow-read --allow-env --allow-net",
     "outdated": "deno outdated --update --latest"
   },
   "imports": {
     "#/": "./",
     "@deno/doc": "jsr:@deno/doc@^0.161.2",
+    "@sinclair/typebox": "npm:@sinclair/typebox@^0.34.13",
     "@std/assert": "jsr:@std/assert@^1.0.8",
     "@std/fs": "jsr:@std/fs@^1.0.8",
     "@std/text": "jsr:@std/text@^1.0.9",
     "ts-morph": "npm:ts-morph@^24.0.0",
     "typescript": "npm:typescript@^5.7.2"
   },
-  "exclude": ["tests"]
+  "lint": {
+    "exclude": ["./tests/"]
+  }
 }

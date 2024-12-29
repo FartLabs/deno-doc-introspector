@@ -2,9 +2,9 @@
 //
 
 interface Bar extends Foo {
-    bar: string;
+  bar: string;
 }
 
 interface Foo {
-    foo: string;
+  foo: string;
 }

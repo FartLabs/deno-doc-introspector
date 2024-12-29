@@ -18,7 +18,7 @@ if (downloadTypesDts) {
   await writeDenoDoc(typesDtsFile, typesDtsDocNodes);
 }
 
-const destinationDir = "./lib/deno-doc/generated";
+const destinationDir = "./lib/deno-doc/generated/walk";
 
 if (import.meta.main) {
   const project = new Project();
@@ -66,66 +66,74 @@ function createWalkFile(
     returnType: "Generator<unknown, void, unknown>",
   });
 
-  if (symbol === "LiteralDef") {
-    return sourceFile;
-  }
-
   const importedWalkFnIdentifiers = new Set<string>();
-  for (const node of nodes) {
-    for (let i = 0; i < (node.typeNames?.length ?? 0); i++) {
-      const typeName = node.typeNames?.[i];
-      if (typeName === undefined || !nodeMap.has(typeName)) {
-        continue;
-      }
+  if (symbol !== "LiteralDef") {
+    for (const node of nodes) {
+      for (let i = 0; i < (node.typeNames?.length ?? 0); i++) {
+        const typeName = node.typeNames?.[i];
+        if (typeName === undefined || !nodeMap.has(typeName)) {
+          continue;
+        }
 
-      const currentNode = findDocNode(typesDtsDocNodes, { name: typeName });
-      if (currentNode === undefined) {
-        throw new Error(`node not found for type name: ${typeName}`);
-      }
+        const currentNode = findDocNode(typesDtsDocNodes, { name: typeName });
+        if (currentNode === undefined) {
+          throw new Error(`node not found for type name: ${typeName}`);
+        }
 
-      const walkFnIdentifier = makeWalkFnIdentifier(typeName);
-      importedWalkFnIdentifiers.add(walkFnIdentifier);
+        const walkFnIdentifier = makeWalkFnIdentifier(typeName);
+        importedWalkFnIdentifiers.add(walkFnIdentifier);
 
-      for (const kind of node.kinds?.[i]!) {
-        walkFn.addStatements([
-          `if (node.kind === "${kind}") {`,
-          `return yield* ${walkFnIdentifier}(node);`,
-          `}`,
-        ]);
-      }
-    }
-
-    for (const property of node.properties ?? []) {
-      if (!nodeMap.has(property.typeName)) {
-        continue;
-      }
-
-      const walkFnIdentifier = makeWalkFnIdentifier(property.typeName);
-      importedWalkFnIdentifiers.add(walkFnIdentifier);
-      if (property.multiple) {
-        const iterableString = `node.${property.property}${
-          property.optional ? " ?? []" : ""
-        }`;
-        const yieldString = `yield value; yield* ${walkFnIdentifier}(value);`;
-        walkFn.addStatements([
-          `for (const value of ${iterableString}) {`,
-          yieldString,
-          `}`,
-        ]);
-      } else {
-        const yieldString =
-          `yield node.${property.property}; yield* ${walkFnIdentifier}(node.${property.property});`;
-        if (property.optional) {
+        for (const kind of node.kinds?.[i]!) {
           walkFn.addStatements([
-            `if (node.${property.property} !== undefined) {`,
+            `if (node.kind === "${kind}") {`,
+            `return yield* ${walkFnIdentifier}(node);`,
+            `}`,
+          ]);
+        }
+      }
+
+      for (const property of node.properties ?? []) {
+        if (!nodeMap.has(property.typeName)) {
+          continue;
+        }
+
+        const walkFnIdentifier = makeWalkFnIdentifier(property.typeName);
+        importedWalkFnIdentifiers.add(walkFnIdentifier);
+        if (property.multiple) {
+          const iterableString = `node.${property.property}${
+            property.optional ? " ?? []" : ""
+          }`;
+          const yieldString = `yield value; yield* ${walkFnIdentifier}(value);`;
+          walkFn.addStatements([
+            `for (const value of ${iterableString}) {`,
             yieldString,
             `}`,
           ]);
         } else {
-          walkFn.addStatements(yieldString);
+          const yieldString =
+            `yield node.${property.property}; yield* ${walkFnIdentifier}(node.${property.property});`;
+          if (property.optional) {
+            walkFn.addStatements([
+              `if (node.${property.property} !== undefined) {`,
+              yieldString,
+              `}`,
+            ]);
+          } else {
+            walkFn.addStatements(yieldString);
+          }
         }
       }
     }
+  }
+
+  const bodyText = walkFn.getBodyText();
+  if (bodyText === undefined || bodyText === "") {
+    const unusedParameter = walkFn.getParameter("node");
+    if (unusedParameter === undefined) {
+      throw new Error(`expected parameter node not found`);
+    }
+
+    unusedParameter.rename("_node");
   }
 
   for (const importedWalkFnIdentifier of importedWalkFnIdentifiers) {

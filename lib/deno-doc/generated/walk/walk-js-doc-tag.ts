@@ -2,6 +2,6 @@
 import type { JsDocTag } from "@deno/doc";
 
 export function* walkJsDocTag(
-  node: JsDocTag,
+  _node: JsDocTag,
 ): Generator<unknown, void, unknown> {
 }

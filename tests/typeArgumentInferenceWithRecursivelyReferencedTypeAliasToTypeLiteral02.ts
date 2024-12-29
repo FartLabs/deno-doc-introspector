@@ -3,11 +3,11 @@
 //
 
 type TreeNode = {
-    name: string;
-    parent: TreeNode;
-}
+  name: string;
+  parent: TreeNode;
+};
 
 type TreeNodeMiddleman = {
-    name: string;
-    parent: TreeNode;
-}
+  name: string;
+  parent: TreeNode;
+};

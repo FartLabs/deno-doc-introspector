@@ -2,5 +2,5 @@
 //
 
 interface Foo {
-  bar: { baz: string; };
+  bar: { baz: string };
 }

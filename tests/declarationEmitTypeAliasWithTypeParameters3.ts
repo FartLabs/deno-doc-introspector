@@ -3,5 +3,5 @@
 //
 
 type Foo<T> = {
-    foo<U>(): Foo<U>
-}
+  foo<U>(): Foo<U>;
+};
