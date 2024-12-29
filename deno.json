@@ -3,7 +3,8 @@
   "tasks": {
     "generate": "deno --allow-read --allow-write --allow-env --allow-net lib/deno-doc/codegen/codegen.ts && deno fmt lib/deno-doc/generated/**/*.ts",
     "test": "deno test --allow-import --allow-read --allow-env --allow-net",
-    "outdated": "deno outdated --update --latest"
+    "outdated": "deno outdated --update --latest",
+    "bench": "deno bench --allow-read --allow-run"
   },
   "imports": {
     "#/": "./",
@@ -16,6 +17,6 @@
     "typescript": "npm:typescript@^5.7.2"
   },
   "lint": {
-    "exclude": ["./tests/"]
+    "exclude": ["./lib/testdata/"]
   }
 }

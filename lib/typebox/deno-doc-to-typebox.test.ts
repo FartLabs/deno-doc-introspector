@@ -1,12 +1,12 @@
 import { assertEquals } from "@std/assert";
-import { testDocNodes } from "#/tests.ts";
+import { testdataDocNodesByFilename } from "#/lib/testdata.ts";
 import { DenoDocToTypeBox } from "./deno-doc-to-typebox.ts";
 
 Deno.test("DenoDocToTypeBox", async (t) => {
   const generator = new DenoDocToTypeBox();
 
   await t.step("interfaceDeclaration1.ts", () => {
-    const nodes = testDocNodes.get("interfaceDeclaration5.ts")!;
+    const nodes = testdataDocNodesByFilename.get("interfaceDeclaration5.ts")!;
     const actual = generator.generate(nodes);
     const expected = "import { Type, Static } from '@sinclair/typebox'\n" +
       "\n" +
@@ -20,7 +20,7 @@ Deno.test("DenoDocToTypeBox", async (t) => {
   });
 
   await t.step("interfacedecl.ts", () => {
-    const nodes = testDocNodes.get("interfacedecl.ts")!;
+    const nodes = testdataDocNodesByFilename.get("interfacedecl.ts")!;
     const actual = generator.generate(nodes);
     const expected = "import { Type, Static } from '@sinclair/typebox'\n" +
       "\n" +
@@ -66,7 +66,7 @@ Deno.test("DenoDocToTypeBox", async (t) => {
   });
 
   await t.step("interface-nested.ts", () => {
-    const nodes = testDocNodes.get("interface-nested.ts")!;
+    const nodes = testdataDocNodesByFilename.get("interface-nested.ts")!;
     const actual = generator.generate(nodes);
     const expected = "import { Type, Static } from '@sinclair/typebox'\n" +
       "\n" +
@@ -82,7 +82,7 @@ Deno.test("DenoDocToTypeBox", async (t) => {
   });
 
   await t.step("interface-extends.ts", () => {
-    const sourceCode = testDocNodes.get("interface-extends.ts")!;
+    const sourceCode = testdataDocNodesByFilename.get("interface-extends.ts")!;
     const actual = generator.generate(sourceCode);
     const expected = "import { Type, Static } from '@sinclair/typebox'\n" +
       "\n" +
@@ -101,7 +101,7 @@ Deno.test("DenoDocToTypeBox", async (t) => {
   });
 
   await t.step("declarationEmitTypeAliasWithTypeParameters1.ts", () => {
-    const nodes = testDocNodes.get(
+    const nodes = testdataDocNodesByFilename.get(
       "declarationEmitTypeAliasWithTypeParameters1.ts",
     )!;
     const actual = generator.generate(nodes);
@@ -122,7 +122,7 @@ Deno.test("DenoDocToTypeBox", async (t) => {
   });
 
   await t.step("declarationEmitTypeAliasWithTypeParameters2.ts", () => {
-    const nodes = testDocNodes.get(
+    const nodes = testdataDocNodesByFilename.get(
       "declarationEmitTypeAliasWithTypeParameters2.ts",
     )!;
     const actual = generator.generate(nodes);
@@ -146,7 +146,7 @@ Deno.test("DenoDocToTypeBox", async (t) => {
   });
 
   await t.step("declarationEmitTypeAliasWithTypeParameters3.ts", () => {
-    const nodes = testDocNodes.get(
+    const nodes = testdataDocNodesByFilename.get(
       "declarationEmitTypeAliasWithTypeParameters3.ts",
     )!;
     const actual = generator.generate(nodes);
@@ -162,7 +162,7 @@ Deno.test("DenoDocToTypeBox", async (t) => {
   });
 
   await t.step("declarationEmitTypeAliasWithTypeParameters4.ts", () => {
-    const nodes = testDocNodes.get(
+    const nodes = testdataDocNodesByFilename.get(
       "declarationEmitTypeAliasWithTypeParameters4.ts",
     )!;
     const actual = generator.generate(nodes);
@@ -181,7 +181,7 @@ Deno.test("DenoDocToTypeBox", async (t) => {
   });
 
   await t.step("declarationEmitTypeAliasWithTypeParameters5.ts", () => {
-    const nodes = testDocNodes.get(
+    const nodes = testdataDocNodesByFilename.get(
       "declarationEmitTypeAliasWithTypeParameters5.ts",
     )!;
     const actual = generator.generate(nodes);
@@ -201,7 +201,7 @@ Deno.test("DenoDocToTypeBox", async (t) => {
   });
 
   await t.step("declarationEmitTypeAliasWithTypeParameters6.ts", () => {
-    const nodes = testDocNodes.get(
+    const nodes = testdataDocNodesByFilename.get(
       "declarationEmitTypeAliasWithTypeParameters6.ts",
     )!;
     const actual = generator.generate(nodes);
@@ -222,7 +222,7 @@ Deno.test("DenoDocToTypeBox", async (t) => {
   await t.step(
     "typeArgumentInferenceWithRecursivelyReferencedTypeAliasToTypeLiteral01.ts",
     () => {
-      const nodes = testDocNodes.get(
+      const nodes = testdataDocNodesByFilename.get(
         "typeArgumentInferenceWithRecursivelyReferencedTypeAliasToTypeLiteral01.ts",
       )!;
       const actual = generator.generate(nodes);
@@ -241,7 +241,7 @@ Deno.test("DenoDocToTypeBox", async (t) => {
   await t.step(
     "typeArgumentInferenceWithRecursivelyReferencedTypeAliasToTypeLiteral02.ts",
     () => {
-      const nodes = testDocNodes.get(
+      const nodes = testdataDocNodesByFilename.get(
         "typeArgumentInferenceWithRecursivelyReferencedTypeAliasToTypeLiteral02.ts",
       )!;
       const actual = generator.generate(nodes);
@@ -266,7 +266,9 @@ Deno.test("DenoDocToTypeBox", async (t) => {
   await t.step(
     "class-interface-compat.ts",
     () => {
-      const nodes = testDocNodes.get("class-interface-compat.ts")!;
+      const nodes = testdataDocNodesByFilename.get(
+        "class-interface-compat.ts",
+      )!;
       const actual = generator.generate(nodes);
       const expected = "import { Type, Static } from '@sinclair/typebox'\n" +
         "\n" +

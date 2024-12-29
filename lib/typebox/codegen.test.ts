@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { readTestFile } from "#/tests.ts";
+import { readTestFile } from "#/lib/testdata.ts";
 import { TypeScriptToTypeBox } from "./codegen.ts";
 
 Deno.test("TypeScriptToTypeBox", async (t) => {

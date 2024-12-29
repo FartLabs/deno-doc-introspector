@@ -1,5 +1,5 @@
 import { DocNode, TsTypeDef } from "@deno/doc";
-import { walkDocNode } from "#/lib/deno-doc/generated/walk-doc-node.ts";
+import { walkDocNode } from "#/lib/deno-doc/generated/walk/walk-doc-node.ts";
 
 export function checkRecursive(docNode: DocNode): boolean {
   for (const childNode of walkDocNode(docNode) as Iterable<TsTypeDef>) {
