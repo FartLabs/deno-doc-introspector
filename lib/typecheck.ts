@@ -1,11 +1,10 @@
-// import { ts } from "ts-morph";
 import * as ts from "typescript";
 
 export function createTypeCheckFn(
   typeChecker: ts.TypeChecker,
   sourceFile: ts.SourceFile,
   expression: string,
-): () => string {
+): () => void {
   const node = findPropertyAccessExpressionNode(sourceFile, expression);
   if (node === undefined || !ts.isPropertyAccessExpression(node)) {
     throw new Error("Node not found");
@@ -17,8 +16,7 @@ export function createTypeCheckFn(
   }
 
   return () => {
-    const type = typeChecker.getTypeOfSymbolAtLocation(symbol, node);
-    return `${type}`;
+    typeChecker.getTypeOfSymbolAtLocation(symbol, node);
   };
 }
 
@@ -27,7 +25,6 @@ function findPropertyAccessExpressionNode(
   expression: string,
 ): ts.Node | undefined {
   return ts.forEachChild(root, (node) => {
-    // console.log(node.getText());
     if (
       ts.isPropertyAccessExpression(node) &&
       node.getText() === expression
