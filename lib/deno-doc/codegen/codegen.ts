@@ -1,18 +1,18 @@
 import { exists } from "@std/fs/exists";
 import { toKebabCase } from "@std/text";
 import type { DocNode } from "@deno/doc";
-import { doc } from "@deno/doc";
 import type { SourceFile } from "ts-morph";
 import { Project } from "ts-morph";
 import { findDocNode } from "#/lib/deno-doc/find.ts";
 import { readDenoDoc, writeDenoDoc } from "./fs.ts";
+import { generateDocNodes } from "#/lib/deno-doc/generate-doc-nodes.ts";
 
 const typesDtsURL =
   "https://github.com/denoland/deno_doc/raw/2c0ff7c0eee0ebd8e865ca8284e5e1b03f3f008c/js/types.d.ts";
 const downloadTypesDts = false;
 const typesDtsFile = new URL(import.meta.resolve("./types.json"));
 const typesDtsDocNodes = downloadTypesDts
-  ? await doc(typesDtsURL)
+  ? await generateDocNodes(typesDtsURL)
   : await readDenoDoc(typesDtsFile);
 if (downloadTypesDts) {
   await writeDenoDoc(typesDtsFile, typesDtsDocNodes);

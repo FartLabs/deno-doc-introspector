@@ -8,3 +8,8 @@ interface Bar extends Foo {
 interface Foo {
   foo: string;
 }
+
+function processBar(bar: Bar): void {
+  console.log(bar.foo);
+  console.log(bar.bar);
+}

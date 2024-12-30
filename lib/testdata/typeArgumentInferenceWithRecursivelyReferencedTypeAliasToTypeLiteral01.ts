@@ -6,3 +6,8 @@ type TreeNode = {
   name: string;
   parent: TreeNode;
 };
+
+function processTreeNode(node: TreeNode): void {
+  console.log(node.name);
+  console.log(node.parent);
+}
