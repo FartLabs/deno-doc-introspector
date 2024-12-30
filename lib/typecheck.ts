@@ -1,6 +1,6 @@
 import * as ts from "typescript";
 
-export function createTypeCheckFn(
+export function setupTypeCheckFn(
   typeChecker: ts.TypeChecker,
   sourceFile: ts.SourceFile,
   expression: string,

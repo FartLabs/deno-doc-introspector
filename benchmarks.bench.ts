@@ -1,32 +1,43 @@
 import * as ts from "typescript";
-import { createTypeCheckFn } from "#/lib/typecheck.ts";
+import { setupTypeCheckFn } from "#/lib/typecheck.ts";
 
-const testdata = {
-  "interface-extends.ts": ["bar.foo"],
-  "typeArgumentInferenceWithRecursivelyReferencedTypeAliasToTypeLiteral01.ts": [
-    "node.name",
-  ],
-};
+type Testdata = Record<string, string[]>;
 
-for (const [filename, paths] of Object.entries(testdata)) {
-  for (const path of paths) {
+const testdata: Testdata[] = [
+  {
+    "interface-extends.ts": ["bar.foo"],
+  },
+  {
+    "typeArgumentInferenceWithRecursivelyReferencedTypeAliasToTypeLiteral01.ts":
+      ["node.name"],
+    // TODO: Fix this test case.
+    // "typeboxArgumentInferenceWithRecursivelyReferencedTypeAliasToTypeLiteral01.ts":
+    //   ["node.name"],
+  },
+];
+
+testdata
+  .flatMap((x) => Object.entries(x))
+  .forEach(([filename, paths]) => {
     const program = ts.createProgram(
       [`./lib/testdata/${filename}`],
-      {},
+      {/* baseUrl: "./" */},
     );
     const sourceFile = program.getSourceFiles()
       .find(({ fileName }) => fileName.endsWith(filename))!;
-    const fn = createTypeCheckFn(
-      program.getTypeChecker(),
-      sourceFile,
-      path,
-    );
 
-    Deno.bench(
-      `${filename}:${path}`,
-      () => {
-        fn();
-      },
-    );
-  }
-}
+    for (const path of paths) {
+      const fn = setupTypeCheckFn(
+        program.getTypeChecker(),
+        sourceFile,
+        path,
+      );
+
+      Deno.bench(
+        `${filename}:${path}`,
+        () => {
+          fn();
+        },
+      );
+    }
+  });
