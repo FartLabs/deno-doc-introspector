@@ -1,43 +1,34 @@
 import * as ts from "typescript";
-import { setupTypeCheckFn } from "#/lib/typecheck.ts";
 
-type Testdata = Record<string, string[]>;
-
-const testdata: Testdata[] = [
-  {
-    "interface-extends.ts": ["bar.foo"],
-  },
-  {
-    "typeArgumentInferenceWithRecursivelyReferencedTypeAliasToTypeLiteral01.ts":
-      ["node.name"],
-    // TODO: Fix this test case.
-    // "typeboxArgumentInferenceWithRecursivelyReferencedTypeAliasToTypeLiteral01.ts":
-    //   ["node.name"],
-  },
+const testdata: string[] = [
+  // "interface-extends.ts",
+  // "typeArgumentInferenceWithRecursivelyReferencedTypeAliasToTypeLiteral01.ts",
+  "typeboxArgumentInferenceWithRecursivelyReferencedTypeAliasToTypeLiteral01.ts",
 ];
 
 testdata
-  .flatMap((x) => Object.entries(x))
-  .forEach(([filename, paths]) => {
+  .forEach((filename) => {
     const program = ts.createProgram(
       [`./lib/testdata/${filename}`],
-      {/* baseUrl: "./" */},
+      {
+        moduleResolution: ts.ModuleResolutionKind.NodeNext,
+        // Optionally, specify paths to node_modules (if not in the default location)
+        paths: {
+          // TODO: TypeError: Cannot read properties of undefined (reading 'statements')
+          "@sinclair/typebox": ["./node_modules/@sinclair/typebox"],
+        },
+      },
     );
+    const checker = program.getTypeChecker();
     const sourceFile = program.getSourceFiles()
       .find(({ fileName }) => fileName.endsWith(filename))!;
+    console.log({
+      sourceFiles: program.getSourceFiles().map((f) => f.fileName),
+    }); // TODO: Remove.
 
-    for (const path of paths) {
-      const fn = setupTypeCheckFn(
-        program.getTypeChecker(),
-        sourceFile,
-        path,
-      );
-
-      Deno.bench(
-        `${filename}:${path}`,
-        () => {
-          fn();
-        },
-      );
-    }
+    const node = sourceFile.statements.at(-1) as ts.VariableStatement;
+    const typeNode = node.declarationList.declarations[0].type!;
+    Deno.bench(filename, () => {
+      checker.getTypeFromTypeNode(typeNode);
+    });
   });

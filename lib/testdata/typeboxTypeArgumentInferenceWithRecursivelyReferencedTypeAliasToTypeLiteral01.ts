@@ -12,7 +12,10 @@ const TreeNode = Type.Recursive((This) =>
   })
 );
 
-function processTreeNode(node: TreeNode): void {
-  console.log(node.name);
-  console.log(node.parent);
-}
+const node: TreeNode = {
+  name: "foo",
+  parent: {
+    name: "bar",
+    parent: null as unknown as TreeNode,
+  },
+};
