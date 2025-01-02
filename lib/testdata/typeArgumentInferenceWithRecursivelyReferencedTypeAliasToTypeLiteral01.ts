@@ -6,11 +6,3 @@ type TreeNode = {
   name: string;
   parent: TreeNode;
 };
-
-const node: TreeNode = {
-  name: "foo",
-  parent: {
-    name: "bar",
-    parent: null as unknown as TreeNode,
-  },
-};

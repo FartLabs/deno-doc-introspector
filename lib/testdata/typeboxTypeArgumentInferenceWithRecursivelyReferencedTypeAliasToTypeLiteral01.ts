@@ -11,11 +11,3 @@ const TreeNode = Type.Recursive((This) =>
     parent: This,
   })
 );
-
-const node: TreeNode = {
-  name: "foo",
-  parent: {
-    name: "bar",
-    parent: null as unknown as TreeNode,
-  },
-};
