@@ -271,6 +271,34 @@ Deno.test("TypeScriptToTypeBox", async (t) => {
   );
 
   await t.step(
+    "genericTypeArgumentInferenceWithRecursivelyReferencedTypeAliasToTypeLiteral02.ts",
+    async () => {
+      const sourceCode = await readTestFile(
+        "genericTypeArgumentInferenceWithRecursivelyReferencedTypeAliasToTypeLiteral02.ts",
+      );
+      const actual = generator.generate(sourceCode);
+      const expected =
+        "import { Type, Static, TSchema } from '@sinclair/typebox'\n" +
+        "\n" +
+        "\n" +
+        "type TreeNode<T extends TSchema> = Static<ReturnType<typeof TreeNode<T>>>\n" +
+        "const TreeNode = <T extends TSchema>(T: T) => Type.Recursive(This => Type.Object({\n" +
+        "name: Type.String(),\n" +
+        "parent: This,\n" +
+        "value: T\n" +
+        "}))\n" +
+        "\n" +
+        "type TreeNodeMiddleman<T extends TSchema> = Static<ReturnType<typeof TreeNodeMiddleman<T>>>\n" +
+        "const TreeNodeMiddleman = <T extends TSchema>(T: T) => Type.Object({\n" +
+        "name: Type.String(),\n" +
+        "parent: TreeNode(T),\n" +
+        "value: T\n" +
+        "})";
+      assertEquals(actual, expected);
+    },
+  );
+
+  await t.step(
     "class-interface-compat.ts",
     async () => {
       const sourceCode = await readTestFile("class-interface-compat.ts");
