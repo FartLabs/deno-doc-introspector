@@ -1,5 +1,6 @@
 import * as ts from "typescript";
 import type {
+  ClassConstructorDef,
   DocNode,
   DocNodeClass,
   DocNodeEnum,
@@ -45,8 +46,11 @@ export interface DocNodesToTypeBoxOptions {
 // TODO: Migrate to ts-morph for building TypeScript files, once tests pass!
 export class DenoDocToTypeBox {
   private typenames = new Set<string>();
-  private recursiveDeclaration: DocNodeTypeAlias | DocNodeInterface | null =
-    null;
+  private recursiveDeclaration:
+    | DocNodeTypeAlias
+    | DocNodeInterface
+    | DocNodeClass
+    | null = null;
   private useImports = true;
   private useOptions = false;
   private useGenerics = false;
@@ -74,7 +78,9 @@ export class DenoDocToTypeBox {
   }
 
   // https://github.com/sinclairzx81/typebox-codegen/blob/7a859390ab29032156d8da260038b45cf63fc5a4/src/typescript/typescript-to-typebox.ts#L111
-  private isRecursiveType(node: DocNodeInterface | DocNodeTypeAlias): boolean {
+  private isRecursiveType(
+    node: DocNodeInterface | DocNodeTypeAlias | DocNodeClass,
+  ): boolean {
     return checkRecursive(node);
   }
 
@@ -236,36 +242,52 @@ export class DenoDocToTypeBox {
     yield [enumType, "", this.useStaticType ? staticType : "", type].join("\n");
   }
 
-  private membersFromTypeElementArray(
+  private membersFromDefs(
     propertyDefs: LiteralPropertyDef[],
     methodDefs: LiteralMethodDef[],
     indexSignatureDefs: InterfaceIndexSignatureDef[],
+    constructorDefs?: ClassConstructorDef[],
   ): string {
-    const memberCollect = propertyDefs
-      .filter((member) => member.tsType?.kind !== "indexedAccess")
-      .map((property) => `${property.name}: ${this.literalProperty(property)}`)
-      .concat(
-        methodDefs.map((method) =>
-          `${method.name}: ${
-            this.collect(
-              {
-                repr: "",
-                kind: "fnOrConstructor",
-                fnOrConstructor: {
-                  constructor: false,
-                  params: method.params,
-                  typeParams: method.typeParams,
-                  tsType: method.returnType!,
-                },
-              } satisfies TsTypeFnOrConstructorDef,
-            )
-          }`
+    const memberCollect = [
+      ...propertyDefs
+        .filter((member) => member.tsType?.kind !== "indexedAccess")
+        .map((property) =>
+          `${property.name}: ${this.literalProperty(property)}`
         ),
-      )
-      .join(",\n");
+      ...methodDefs.map((method) =>
+        `${method.name}: ${
+          this.collect(
+            {
+              repr: "",
+              kind: "fnOrConstructor",
+              fnOrConstructor: {
+                constructor: false,
+                params: method.params,
+                typeParams: method.typeParams,
+                tsType: method.returnType!,
+              },
+            } satisfies TsTypeFnOrConstructorDef,
+          )
+        }`
+      ),
+      ...constructorDefs
+        ?.slice(0, 1)
+        .flatMap((constructorDef) =>
+          constructorDef.params
+            // Only public constructor params are included in the plain object.
+            .filter((param) => param.accessibility === "public")
+            .map((param) =>
+              //  Why is name not a property of param?
+              `${(param as { name: string }).name}: ${
+                this.collect(param.tsType)
+              }`
+            )
+            .filter((constructorDef) => constructorDef !== undefined)
+        ) ?? [],
+    ].join(",\n");
 
     const indexer = indexSignatureDefs.length > 0
-      ? this.collect(indexSignatureDefs[indexSignatureDefs.length - 1]?.tsType)
+      ? this.collect(indexSignatureDefs.at(-1)?.tsType)
       : "";
 
     return `{${memberCollect ? `\n${memberCollect}\n` : ""}}${
@@ -276,7 +298,7 @@ export class DenoDocToTypeBox {
   private *typeLiteralNode(
     node: TsTypeTypeLiteralDef,
   ): IterableIterator<string> {
-    const members = this.membersFromTypeElementArray(
+    const members = this.membersFromDefs(
       node.typeLiteral.properties,
       node.typeLiteral.methods,
       node.typeLiteral.indexSignatures,
@@ -299,7 +321,7 @@ export class DenoDocToTypeBox {
 
     if (node.interfaceDef.typeParams.length === 0) {
       const exports = node.declarationKind === "export" ? "export " : "";
-      const members = this.membersFromTypeElementArray(
+      const members = this.membersFromDefs(
         node.interfaceDef.properties,
         node.interfaceDef.methods,
         node.interfaceDef.indexSignatures,
@@ -515,9 +537,37 @@ export class DenoDocToTypeBox {
   ): IterableIterator<string> {
   }
 
-  private *classDeclaration(
-    _node: DocNodeClass,
-  ): IterableIterator<string> {
+  private *classDeclaration(node: DocNodeClass): IterableIterator<string> {
+    this.useImports = true;
+
+    const isRecursiveType = this.isRecursiveType(node);
+    if (isRecursiveType) {
+      this.recursiveDeclaration = node;
+    }
+
+    if (node.classDef.typeParams.length === 0) {
+      const exports = node.declarationKind === "export" ? "export " : "";
+      const members = this.membersFromDefs(
+        node.classDef.properties as unknown as LiteralPropertyDef[],
+        node.classDef.methods as unknown as LiteralMethodDef[],
+        node.classDef.indexSignatures,
+        node.classDef.constructors,
+      );
+
+      const staticDeclaration =
+        `${exports}type ${node.name} = Static<typeof ${node.name}>`;
+      const typeExpression = this.isRecursiveType(node)
+        ? `Type.Recursive(This => Type.Object(${members}))`
+        : `Type.Object(${members})`;
+
+      const type = this.unwrapType(typeExpression);
+      const typeDeclaration = `${exports}const ${node.name} = ${type}`;
+      yield `${
+        this.useStaticType ? staticDeclaration : ""
+      }\n${typeDeclaration}`;
+    }
+
+    this.recursiveDeclaration = null;
   }
 
   private *keywordNode(node: TsTypeKeywordDef): IterableIterator<string> {

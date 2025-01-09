@@ -34,6 +34,3 @@ interface c extends a, b {
 
 interface d extends a {
 }
-
-class c1 implements a {
-}
