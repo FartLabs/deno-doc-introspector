@@ -132,7 +132,7 @@ export class DenoDocToTypeBox {
     const readonly = node.mappedType.readonly !== undefined;
     const optional = node.mappedType.optional !== undefined;
 
-    // TODO: Verify values of mapped type.
+    // TODO: Add test case with mapped type with readonly and optional.
     const isReadonlyTokenMinus = node.mappedType.readonly?.valueOf() === "-";
     const isQuestionTokenMinus = node.mappedType.optional?.valueOf() === "-";
     const readonlySubtractive = readonly && isReadonlyTokenMinus;
@@ -296,46 +296,8 @@ export class DenoDocToTypeBox {
 
     const heritage = node.interfaceDef.extends
       .map((node) => this.collect(node));
-    if (node.interfaceDef.typeParams.length > 0) {
-      throw new Error("Type parameters are not supported in interfaces");
 
-      // this.useGenerics = true;
-      // const exports = node.declarationKind === "export" ? "export " : "";
-
-      // // const identifier = node.name;
-      // // const options = this.useIdentifiers
-      // //   ? { ...this.resolveOptions(node), $id: identifier }
-      // //   : { ...this.resolveOptions(node) };
-
-      // const constraints = node.interfaceDef.typeParams
-      //   .map((param) => `${this.collect(param.constraint)} extends TSchema`)
-      //   .join(", ");
-      // const parameters = node.interfaceDef.typeParams
-      //   .map((param) =>
-      //     `${this.collect(param.constraint)}: ${this.collect(param.constraint)}`
-      //   )
-      //   .join(", ");
-
-      // const members = this.membersFromTypeElementArray(
-      //   node.interfaceDef.properties,
-      // );
-
-      // const names = node.interfaceDef.typeParams
-      //   .map((param) => `${this.collect(param.constraint)}`)
-      //   .join(", ");
-      // const staticDeclaration =
-      //   `${exports}type ${node.name}<${constraints}> = Static<ReturnType<typeof ${node.name}<${names}>>>`;
-      // const rawTypeExpression = this.isRecursiveType(node)
-      //   ? `Type.Recursive(This => Type.Object(${members}))`
-      //   : `Type.Object(${members})`;
-      // const typeExpression = heritage.length === 0
-      //   ? rawTypeExpression
-      //   : `Type.Composite([${heritage.join(", ")}, ${rawTypeExpression}])`;
-      // // const type = this.injectOptions(typeExpression, options);
-      // const typeDeclaration =
-      //   `${exports}const ${node.name} = <${constraints}>(${parameters}) => ${typeExpression}`;
-      // yield `${staticDeclaration}\n${typeDeclaration}`;
-    } else {
+    if (node.interfaceDef.typeParams.length === 0) {
       const exports = node.declarationKind === "export" ? "export " : "";
       const members = this.membersFromTypeElementArray(
         node.interfaceDef.properties,
@@ -368,9 +330,6 @@ export class DenoDocToTypeBox {
     const isRecursiveType = this.isRecursiveType(node);
     if (isRecursiveType) {
       this.recursiveDeclaration = node;
-
-      // TODO: Remove.
-      // console.log({ isRecursiveType, recursive: this.recursiveDeclaration });
     }
 
     if (node.typeAliasDef.typeParams.length > 0) {
