@@ -1,4 +1,3 @@
-import * as ts from "typescript";
 import type {
   ClassConstructorDef,
   DocNode,
@@ -30,7 +29,7 @@ import type {
 import { checkRecursive } from "#/lib/deno-doc/check-recursive.ts";
 
 export class TypeScriptToTypeBoxError extends Error {
-  constructor(public readonly diagnostics: ts.Diagnostic[]) {
+  constructor() {
     super("");
   }
 }
@@ -61,20 +60,6 @@ export class DenoDocToTypeBox {
   public constructor(options?: DocNodesToTypeBoxOptions) {
     this.useTypeBoxImport = options?.useTypeBoxImport ?? true;
     this.useStaticType = options?.useStaticType ?? true;
-  }
-
-  private findTypeName(node: ts.Node, name: string): boolean {
-    const found = this.typenames.has(name) ||
-      node.getChildren().some((node) => {
-        return ((ts.isInterfaceDeclaration(node) ||
-          ts.isTypeAliasDeclaration(node)) && node.name.getText() === name) ||
-          this.findTypeName(node, name);
-      });
-    if (found) {
-      this.typenames.add(name);
-    }
-
-    return found;
   }
 
   // https://github.com/sinclairzx81/typebox-codegen/blob/7a859390ab29032156d8da260038b45cf63fc5a4/src/typescript/typescript-to-typebox.ts#L111
