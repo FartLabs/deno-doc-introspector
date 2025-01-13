@@ -2,7 +2,7 @@
   "lock": false,
   "tasks": {
     "generate": "deno --allow-read --allow-write --allow-env --allow-net lib/deno-doc/codegen/codegen.ts && deno fmt lib/deno-doc/generated/**/*.ts",
-    "test": "deno test --allow-import --allow-read --allow-env --allow-net",
+    "test": "deno test --allow-import --allow-read --allow-env --allow-net --allow-sys",
     "outdated": "deno outdated --update --latest"
   },
   "imports": {

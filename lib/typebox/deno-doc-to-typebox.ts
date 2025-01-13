@@ -26,6 +26,7 @@ import type {
   TsTypeTypeRefDef,
   TsTypeUnionDef,
 } from "@deno/doc";
+import type { SourceFile } from "ts-morph";
 import { checkRecursive } from "#/lib/deno-doc/check-recursive.ts";
 
 export class TypeScriptToTypeBoxError extends Error {
@@ -42,7 +43,6 @@ export interface DocNodesToTypeBoxOptions {
   // useIdentifiers?: boolean;
 }
 
-// TODO: Migrate to ts-morph for building TypeScript files, once tests pass!
 export class DenoDocToTypeBox {
   private typenames = new Set<string>();
   private recursiveDeclaration:
@@ -682,9 +682,9 @@ export class DenoDocToTypeBox {
     }
   }
 
-  private importStatement(): string {
+  private namedImports(): string[] {
     if (!(this.useImports && this.useTypeBoxImport)) {
-      return "";
+      return [];
     }
 
     const set = new Set<string>(["Type"]);
@@ -704,21 +704,26 @@ export class DenoDocToTypeBox {
       set.add("CloneType");
     }
 
-    const imports = [...set].join(", ");
-    return `import { ${imports} } from '@sinclair/typebox'`;
+    return Array.from(set);
   }
 
-  public generate(nodes: DocNode[]): string {
+  public generate(
+    sourceFile: SourceFile,
+    nodes: DocNode[],
+  ): void {
     this.typenames.clear();
     this.useImports = false;
     this.useOptions = false;
     this.useGenerics = false;
     this.useCloneType = false;
-    const declarations = nodes
-      .flatMap((node) => [...this.visit(node)])
-      .join("\n\n");
-    const imports = this.importStatement();
-    const typescript = [imports, "", "", declarations].join("\n");
-    return typescript;
+
+    nodes.flatMap((node) =>
+      sourceFile.addStatements(Array.from(this.visit(node)))
+    );
+
+    sourceFile.addImportDeclaration({
+      namedImports: this.namedImports(),
+      moduleSpecifier: "@sinclair/typebox",
+    });
   }
 }
