@@ -7,11 +7,17 @@
   },
   "imports": {
     "#/": "./",
+    "@comunica/query-sparql": "npm:@comunica/query-sparql@^4.0.2",
+    "@comunica/types": "npm:@comunica/types@^4.0.2",
     "@deno/doc": "jsr:@deno/doc@^0.164.0",
     "@sinclair/typebox": "npm:@sinclair/typebox@^0.34.13",
     "@std/assert": "jsr:@std/assert@^1.0.8",
     "@std/fs": "jsr:@std/fs@^1.0.8",
     "@std/text": "jsr:@std/text@^1.0.9",
+    "@types/n3": "npm:@types/n3@^1.21.1",
+    "@types/sparqljs": "npm:@types/sparqljs@^3.1.12",
+    "n3": "npm:n3@^1.23.1",
+    "sparqljs": "npm:sparqljs@^3.7.3",
     "ts-morph": "npm:ts-morph@^25.0.0",
     "typescript": "npm:typescript@^5.7.2"
   },
