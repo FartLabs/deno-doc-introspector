@@ -20,8 +20,8 @@ class Person {
 function personSparqlInsert(person: Person): string {
   return `PREFIX schema: <https://schema.org/>
 INSERT DATA {
-  <${person.id}> a schema:Person ;
-    schema:name "${person.name}" .
+  <${person.id}> a schema:Person .
+  ${person.name ? `<${person.id}> schema:name "${person.name}" .` : ""}
 }`;
 }
 
@@ -48,11 +48,15 @@ function personApp(person: Person): string {
 </form>`;
 }
 
-function personFromBindings(bindings: Bindings[]): Person {
-  const predicates = bindingsByPredicate(bindings);
+function personFromBindings(bindings: unknown[]): Person {
+  const predicates = bindingsByPredicate(bindings as Bindings[]);
   const idNode = predicates["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"]
     ?.at(0)?.get("s");
   const nameNode = predicates["https://schema.org/name"]?.at(0)?.get("o");
+  if (nameNode === undefined) {
+    return new Person(idFromNamedNode(idNode));
+  }
+
   return new Person(
     idFromNamedNode(idNode),
     stripQuotes(idFromNamedNode(nameNode)),
@@ -80,7 +84,10 @@ if (import.meta.main) {
 
   console.log("Inserting data into store");
   const insertResult = await queryEngine.queryVoid(
-    personSparqlInsert({ id, name: "Ethan" }),
+    personSparqlInsert({
+      id,
+      // name: "Ethan",
+    }),
     { sources: [store] },
   );
   console.log(insertResult);
