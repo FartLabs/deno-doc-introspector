@@ -2,115 +2,177 @@
 import { Store } from "n3";
 import { QueryEngine } from "@comunica/query-sparql";
 import type { Bindings } from "@comunica/types";
+import { deepMerge } from "@std/collections/deep-merge";
+import { default as jsonld } from "jsonld";
 
-function context(c: string): ClassDecorator {
-  return (target: Function) => {
-    target.prototype.context = c;
+export const context = createMetadataClassDecorator<
+  MetadataJSONLdContext["context"]
+>("context");
+
+export interface MetadataJSONLdContext {
+  context: JSONLdContext;
+}
+
+export type JSONLdContext = string | Record<string, string>;
+
+export const sparql = createMetadataClassDecorator<
+  MetadataSPARQL["sparql"]
+>("sparql");
+
+export interface MetadataSPARQL {
+  sparql:
+    | string
+    // TODO: Utilize generics to customize variable types.
+    | ((variables: Record<string, string>) => string)
+    | Record<string, string | ((variables: Record<string, string>) => string)>;
+}
+
+// const sql = createMetadataClassDecorator("sql");
+// const typebox = createMetadataClassDecorator("typebox");
+
+function createMetadataClassDecorator<T>(metadataID: string) {
+  return (metadata: T): ClassDecorator => {
+    // deno-lint-ignore no-explicit-any
+    return (target: any) => {
+      target.prototype.meta ??= {};
+      target.prototype.meta[metadataID] = [
+        ...(target.prototype.meta?.[metadataID] ?? []),
+        metadata,
+      ];
+    };
   };
 }
 
-@context("https://schema.org/")
-class Person {
-  public constructor(
-    public id: string,
-    public name?: string,
-  ) {}
-}
-
-function personApp(person: Person): string {
-  return `<form action="/" method="post">
-  <input type="text" name="name" value="${person.name ?? ""}" />
-  <input type="submit" value="Submit" />
-</form>`;
-}
-
-export function manage(
+export function createSparqlQuery<
+  // deno-lint-ignore no-explicit-any
+  T extends { new (...args: any[]): any },
+>(
   queryEngine: QueryEngine,
   store: Store,
+  target: T,
 ) {
-  async function deletePerson(person: Person): Promise<void> {
-    return await queryEngine.queryVoid(
-      personSparqlDelete(person),
-      { sources: [store] },
-    );
-  }
+  return async function (
+    { queryName, variables }: {
+      queryName?: string;
+      variables?: Record<string, string>;
+    } = {},
+  ): Promise<InstanceType<T> | undefined> {
+    const instance = new target();
+    const metadata = resolveMetadata<
+      MetadataSPARQL & MetadataJSONLdContext
+    >(instance);
 
-  async function uploadPerson(person: Person): Promise<void> {
-    return await queryEngine.queryVoid(
-      personSparqlInsert(person),
-      { sources: [store] },
+    const queryString = resolveSparqlQuery(
+      metadata,
+      queryName,
+      variables,
     );
-  }
+    try {
+      const bindings = await queryEngine.queryBindings(
+        queryString,
+        { sources: [store] },
+      );
 
-  async function downloadPerson(person: Person): Promise<Person> {
-    return personFromBindings(
-      await Array.fromAsync(
-        await queryEngine.queryBindings(
-          personSparqlSelect(person),
-          { sources: [store] },
+      if (typeof variables?.id !== "string") {
+        throw new Error("Expected variable ID.");
+      }
+      return Object.assign(
+        instance,
+        await fromSparqlBindings<InstanceType<T>>(
+          variables.id,
+          await Array.fromAsync(bindings),
+          metadata.context,
         ),
-      ),
-    );
-  }
+      );
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message ===
+          "Query result type 'bindings' was expected, while 'void' was found."
+      ) {
+        await queryEngine.queryVoid(queryString, { sources: [store] });
+        return;
+      }
 
-  return {
-    deletePerson,
-    uploadPerson,
-    downloadPerson,
+      throw error;
+    }
   };
 }
 
-function personFromBindings(bindings: unknown[]): Person {
-  console.dir(bindings, { depth: null });
+// TODO: Rename.
+function resolveSparqlQuery(
+  sparqlMeta: MetadataSPARQL & MetadataJSONLdContext,
+  queryID?: string,
+  variables?: Record<string, string>,
+): string {
+  const prelude = typeof sparqlMeta.context === "object"
+    ? Object.entries(sparqlMeta.context)
+      .reduce(
+        (prefixes, [prefix, iri]) =>
+          prefix === "@vocab"
+            ? prefixes
+            : prefixes + `PREFIX ${prefix}: <${iri}>\n`,
+        "",
+      )
+    : "";
 
-  const predicates = bindingsByPredicate(bindings as Bindings[]);
-  const idNode = predicates["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"]
-    ?.at(0)?.get("s");
-  const nameNode = predicates["https://schema.org/name"]?.at(0)?.get("o");
-  if (nameNode === undefined) {
-    return new Person(idFromNamedNode(idNode));
-  }
+  return prelude +
+    (queryID !== undefined
+      ? typeof sparqlMeta.sparql === "object"
+        ? typeof sparqlMeta.sparql[queryID] === "function"
+          ? (sparqlMeta.sparql as Record<
+            string,
+            (variables: Record<string, string>) => string
+          >)[queryID](variables ?? {})
+          : (sparqlMeta.sparql as Record<string, string>)[queryID]
+        : (sparqlMeta.sparql as string)
+      : typeof sparqlMeta.sparql === "function"
+      ? sparqlMeta.sparql(variables ?? {})
+      : (sparqlMeta.sparql as string));
+}
 
-  return new Person(
-    idFromNamedNode(idNode),
-    stripQuotes(idFromNamedNode(nameNode)),
+function resolveMetadata<T>(
+  // deno-lint-ignore no-explicit-any
+  target: any,
+): T {
+  return Object.fromEntries(
+    Object.entries(target.meta).map(([key, value]) => [
+      key,
+      deepMergeRecursive(value as unknown[]),
+    ]),
+  ) as T;
+}
+
+function deepMergeRecursive<T>(objects: T[]): T {
+  return objects.reduce(
+    (acc, obj) =>
+      deepMerge(
+        acc as unknown as Record<PropertyKey, unknown>,
+        obj as unknown as Record<PropertyKey, unknown>,
+      ) as T,
+    {} as T,
   );
+}
+
+async function fromSparqlBindings<T>(
+  id: string,
+  bindings: Bindings[],
+  ctx: JSONLdContext,
+): Promise<T> {
+  const expanded = Object.fromEntries(bindings.map((binding) => {
+    const predicate = binding.get("predicate")!.value;
+    const object = stripQuotes(binding.get("object")!.value);
+
+    // TODO: Parse object string into correct data type.
+    return [predicate, object];
+  }));
+
+  return {
+    id,
+    ...(await jsonld.compact(expanded, ctx)),
+  };
 }
 
 function stripQuotes(s: string): string {
   return s.replace(/^"(.*)"$/, "$1");
-}
-
-function idFromNamedNode(node: unknown): string {
-  return (node as { id: string })?.id;
-}
-
-function bindingsByPredicate(bindings: Bindings[]) {
-  return Object.groupBy(bindings, (b) => b.get("p")?.value!);
-}
-
-function personSparqlInsert(person: Person): string {
-  return `PREFIX schema: <https://schema.org/>
-INSERT DATA {
-  <${person.id}> a schema:Person .
-  ${person.name ? `<${person.id}> schema:name "${person.name}" .` : ""}
-}`;
-}
-
-function personSparqlSelect(person: Person): string {
-  return `PREFIX schema: <https://schema.org/>
-SELECT DISTINCT *
-WHERE {
-  ?s ?p ?o .
-  OPTIONAL { ?s schema:name ?name }
-  FILTER(?s = <${person.id}>)
-  FILTER(?p = <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> || ?p = schema:name)
-  FILTER(?o = schema:Person || isLiteral(?o))
-}`;
-}
-function personSparqlDelete(person: Person): string {
-  return `PREFIX schema: <https://schema.org/>
-DELETE WHERE {
-  <${person.id}> a schema:Person .
-}`;
 }
