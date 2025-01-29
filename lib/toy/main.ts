@@ -25,6 +25,9 @@ if (import.meta.main) {
   const person = new Person(id, "Person");
   console.log(person);
 
+  // Proof of concept:
+  // Generate TypeBox from person, apply type check.
+
   // TODO: Implement web server.
 }
 
