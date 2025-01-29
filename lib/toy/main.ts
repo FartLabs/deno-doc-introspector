@@ -1,7 +1,8 @@
-// @deno-types="@types/n3"
-// import { Store } from "n3";
-// import { QueryEngine } from "@comunica/query-sparql";
+import { Project } from "ts-morph";
+// import { doc } from "@deno/doc";
+import { DenoDocToTypeBox } from "#/lib/typebox/deno-doc-to-typebox.ts";
 import { context } from "./orm.ts";
+import { generateDocNodes } from "#/lib/deno-doc/generate-doc-nodes.ts";
 
 @context({
   "@vocab": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
@@ -17,10 +18,20 @@ class Person {
 
 const id = "https://etok.me";
 
-// deno -A lib/toy/main.ts
+// deno task dev
 if (import.meta.main) {
-  // const store = new Store();
-  // const queryEngine = new QueryEngine();
+  const generator = new DenoDocToTypeBox();
+  const project = new Project({ useInMemoryFileSystem: true });
+
+  const sourceFile = project.createSourceFile("main.ts");
+  // const nodes = await generateDocNodes("https://esm.sh/sparqlalgebrajs@5.0.0");
+  const nodes = await generateDocNodes(
+    import.meta.url,
+    import.meta.resolve("../../deno.json"),
+  );
+  generator.generate(sourceFile, nodes);
+  const actual = sourceFile.getText();
+  console.log(actual);
 
   const person = new Person(id, "Person");
   console.log(person);

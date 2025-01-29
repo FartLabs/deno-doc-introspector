@@ -16,7 +16,6 @@ import type {
   TsTypeFnOrConstructorDef,
   TsTypeIntersectionDef,
   TsTypeKeywordDef,
-  TsTypeMappedDef,
   TsTypeParenthesizedDef,
   TsTypeRestDef,
   TsTypeThisDef,
@@ -114,45 +113,6 @@ export class DenoDocToTypeBox {
       .map((type) => this.collect(type))
       .join(",\n");
     yield `Type.Union([\n${types}\n])`;
-  }
-
-  private *mappedTypeNode(node: TsTypeMappedDef): IterableIterator<string> {
-    const K = this.collect(node.mappedType.typeParam.default);
-    const T = this.collect(node.mappedType.tsType);
-    const C = this.collect(node.mappedType.typeParam.constraint);
-    const readonly = node.mappedType.readonly !== undefined;
-    const optional = node.mappedType.optional !== undefined;
-
-    // TODO: Add test case with mapped type with readonly and optional.
-    const isReadonlyTokenMinus = node.mappedType.readonly?.valueOf() === "-";
-    const isQuestionTokenMinus = node.mappedType.optional?.valueOf() === "-";
-    const readonlySubtractive = readonly && isReadonlyTokenMinus;
-    const optionalSubtractive = optional && isQuestionTokenMinus;
-    return yield (
-      (readonly && optional)
-        ? (
-          (readonlySubtractive && optionalSubtractive)
-            ? `Type.Mapped(${C}, ${K} => Type.Readonly(Type.Optional(${T}, false), false))`
-            : readonlySubtractive
-            ? `Type.Mapped(${C}, ${K} => Type.Readonly(Type.Optional(${T}), false))`
-            : optionalSubtractive
-            ? `Type.Mapped(${C}, ${K} => Type.Readonly(Type.Optional(${T}, false)))`
-            : `Type.Mapped(${C}, ${K} => Type.Readonly(Type.Optional(${T})))`
-        )
-        : readonly
-        ? (
-          readonlySubtractive
-            ? `Type.Mapped(${C}, ${K} => Type.Readonly(${T}, false))`
-            : `Type.Mapped(${C}, ${K} => Type.Readonly(${T}))`
-        )
-        : optional
-        ? (
-          optionalSubtractive
-            ? `Type.Mapped(${C}, ${K} => Type.Optional(${T}, false))`
-            : `Type.Mapped(${C}, ${K} => Type.Optional(${T}))`
-        )
-        : `Type.Mapped(${C}, ${K} => ${T})`
-    );
   }
 
   private *thisTypeNode(_node: TsTypeThisDef) {
@@ -638,9 +598,6 @@ export class DenoDocToTypeBox {
       case "union": {
         return yield* this.unionTypeNode(node);
       }
-      case "mapped": {
-        return yield* this.mappedTypeNode(node);
-      }
       case "parenthesized": {
         return yield* this.parenthesizedTypeNode(node);
       }
@@ -707,10 +664,7 @@ export class DenoDocToTypeBox {
     return Array.from(set);
   }
 
-  public generate(
-    sourceFile: SourceFile,
-    nodes: DocNode[],
-  ): void {
+  public generate(sourceFile: SourceFile, nodes: DocNode[]): void {
     this.typenames.clear();
     this.useImports = false;
     this.useOptions = false;
