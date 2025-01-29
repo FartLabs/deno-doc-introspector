@@ -16,7 +16,7 @@ import { context, createSparqlQuery, sparql } from "./orm.ts";
 }`,
 
   /** select selects person by ID. */
-  select: ({ id }) => `SELECT * WHERE { <${id}> ?predicate ?object }`,
+  select: ({ id }) => `SELECT DISTINCT * WHERE { <${id}> ?predicate ?object }`,
 
   /** delete deletes person by ID. */
   delete: ({ id }) => `DELETE WHERE { <${id}> * * }`,
@@ -42,9 +42,6 @@ if (import.meta.main) {
     queryName: "insert",
     variables: { id, name: "Ethan" },
   });
-  console.log(insertResult);
-
-  console.log("Reading data from store");
   const person = await sparqlQuery({
     queryName: "select",
     variables: { id },
