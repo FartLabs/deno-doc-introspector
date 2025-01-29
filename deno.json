@@ -9,7 +9,7 @@
     "#/": "./",
     "@comunica/query-sparql": "npm:@comunica/query-sparql@^4.0.2",
     "@comunica/types": "npm:@comunica/types@^4.0.2",
-    "@deno/doc": "jsr:@deno/doc@^0.164.0",
+    "@deno/doc": "jsr:@deno/doc@^0.167.0",
     "@sinclair/typebox": "npm:@sinclair/typebox@^0.34.13",
     "@std/assert": "jsr:@std/assert@^1.0.8",
     "@std/collections": "jsr:@std/collections@^1.0.9",
