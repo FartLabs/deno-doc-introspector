@@ -1,4 +1,3 @@
-import * as ts from "typescript";
 import type {
   ClassConstructorDef,
   DocNode,
@@ -17,7 +16,6 @@ import type {
   TsTypeFnOrConstructorDef,
   TsTypeIntersectionDef,
   TsTypeKeywordDef,
-  TsTypeMappedDef,
   TsTypeParenthesizedDef,
   TsTypeRestDef,
   TsTypeThisDef,
@@ -27,10 +25,11 @@ import type {
   TsTypeTypeRefDef,
   TsTypeUnionDef,
 } from "@deno/doc";
+import type { SourceFile } from "ts-morph";
 import { checkRecursive } from "#/lib/deno-doc/check-recursive.ts";
 
 export class TypeScriptToTypeBoxError extends Error {
-  constructor(public readonly diagnostics: ts.Diagnostic[]) {
+  constructor() {
     super("");
   }
 }
@@ -43,7 +42,6 @@ export interface DocNodesToTypeBoxOptions {
   // useIdentifiers?: boolean;
 }
 
-// TODO: Migrate to ts-morph for building TypeScript files, once tests pass!
 export class DenoDocToTypeBox {
   private typenames = new Set<string>();
   private recursiveDeclaration:
@@ -61,20 +59,6 @@ export class DenoDocToTypeBox {
   public constructor(options?: DocNodesToTypeBoxOptions) {
     this.useTypeBoxImport = options?.useTypeBoxImport ?? true;
     this.useStaticType = options?.useStaticType ?? true;
-  }
-
-  private findTypeName(node: ts.Node, name: string): boolean {
-    const found = this.typenames.has(name) ||
-      node.getChildren().some((node) => {
-        return ((ts.isInterfaceDeclaration(node) ||
-          ts.isTypeAliasDeclaration(node)) && node.name.getText() === name) ||
-          this.findTypeName(node, name);
-      });
-    if (found) {
-      this.typenames.add(name);
-    }
-
-    return found;
   }
 
   // https://github.com/sinclairzx81/typebox-codegen/blob/7a859390ab29032156d8da260038b45cf63fc5a4/src/typescript/typescript-to-typebox.ts#L111
@@ -129,45 +113,6 @@ export class DenoDocToTypeBox {
       .map((type) => this.collect(type))
       .join(",\n");
     yield `Type.Union([\n${types}\n])`;
-  }
-
-  private *mappedTypeNode(node: TsTypeMappedDef): IterableIterator<string> {
-    const K = this.collect(node.mappedType.typeParam.default);
-    const T = this.collect(node.mappedType.tsType);
-    const C = this.collect(node.mappedType.typeParam.constraint);
-    const readonly = node.mappedType.readonly !== undefined;
-    const optional = node.mappedType.optional !== undefined;
-
-    // TODO: Add test case with mapped type with readonly and optional.
-    const isReadonlyTokenMinus = node.mappedType.readonly?.valueOf() === "-";
-    const isQuestionTokenMinus = node.mappedType.optional?.valueOf() === "-";
-    const readonlySubtractive = readonly && isReadonlyTokenMinus;
-    const optionalSubtractive = optional && isQuestionTokenMinus;
-    return yield (
-      (readonly && optional)
-        ? (
-          (readonlySubtractive && optionalSubtractive)
-            ? `Type.Mapped(${C}, ${K} => Type.Readonly(Type.Optional(${T}, false), false))`
-            : readonlySubtractive
-            ? `Type.Mapped(${C}, ${K} => Type.Readonly(Type.Optional(${T}), false))`
-            : optionalSubtractive
-            ? `Type.Mapped(${C}, ${K} => Type.Readonly(Type.Optional(${T}, false)))`
-            : `Type.Mapped(${C}, ${K} => Type.Readonly(Type.Optional(${T})))`
-        )
-        : readonly
-        ? (
-          readonlySubtractive
-            ? `Type.Mapped(${C}, ${K} => Type.Readonly(${T}, false))`
-            : `Type.Mapped(${C}, ${K} => Type.Readonly(${T}))`
-        )
-        : optional
-        ? (
-          optionalSubtractive
-            ? `Type.Mapped(${C}, ${K} => Type.Optional(${T}, false))`
-            : `Type.Mapped(${C}, ${K} => Type.Optional(${T}))`
-        )
-        : `Type.Mapped(${C}, ${K} => ${T})`
-    );
   }
 
   private *thisTypeNode(_node: TsTypeThisDef) {
@@ -653,9 +598,6 @@ export class DenoDocToTypeBox {
       case "union": {
         return yield* this.unionTypeNode(node);
       }
-      case "mapped": {
-        return yield* this.mappedTypeNode(node);
-      }
       case "parenthesized": {
         return yield* this.parenthesizedTypeNode(node);
       }
@@ -697,9 +639,9 @@ export class DenoDocToTypeBox {
     }
   }
 
-  private importStatement(): string {
+  private namedImports(): string[] {
     if (!(this.useImports && this.useTypeBoxImport)) {
-      return "";
+      return [];
     }
 
     const set = new Set<string>(["Type"]);
@@ -719,21 +661,23 @@ export class DenoDocToTypeBox {
       set.add("CloneType");
     }
 
-    const imports = [...set].join(", ");
-    return `import { ${imports} } from '@sinclair/typebox'`;
+    return Array.from(set);
   }
 
-  public generate(nodes: DocNode[]): string {
+  public generate(sourceFile: SourceFile, nodes: DocNode[]): void {
     this.typenames.clear();
     this.useImports = false;
     this.useOptions = false;
     this.useGenerics = false;
     this.useCloneType = false;
-    const declarations = nodes
-      .flatMap((node) => [...this.visit(node)])
-      .join("\n\n");
-    const imports = this.importStatement();
-    const typescript = [imports, "", "", declarations].join("\n");
-    return typescript;
+
+    nodes.flatMap((node) =>
+      sourceFile.addStatements(Array.from(this.visit(node)))
+    );
+
+    sourceFile.addImportDeclaration({
+      namedImports: this.namedImports(),
+      moduleSpecifier: "@sinclair/typebox",
+    });
   }
 }
