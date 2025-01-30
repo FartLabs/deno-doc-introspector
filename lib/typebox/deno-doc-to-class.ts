@@ -28,15 +28,14 @@ import type {
 import type { SourceFile } from "ts-morph";
 import { checkRecursive } from "#/lib/deno-doc/check-recursive.ts";
 
-export class TypeScriptToTypeBoxError extends Error {
-  constructor() {
-    super("");
-  }
+export interface DocNodesToClassOptions {
+  generateOptions?: (
+    node: DocNodeInterface | DocNodeTypeAlias | DocNodeClass,
+  ) => DocNodeToClassOptions | undefined;
 }
 
-export interface DocNodesToLinkedDataOptions {
-  // deno-lint-ignore no-explicit-any
-  context: any;
+export interface DocNodeToClassOptions {
+  decorators?: string;
 }
 
 export class DenoDocToClass {
@@ -46,7 +45,7 @@ export class DenoDocToClass {
     | DocNodeClass
     | null = null;
 
-  public constructor(public options?: DocNodesToLinkedDataOptions) {
+  public constructor(public options?: DocNodesToClassOptions) {
   }
 
   private isRecursiveType(
@@ -256,7 +255,11 @@ export class DenoDocToClass {
       //   ? rawTypeExpression
       //   : `Type.Composite([${heritage.join(", ")}, ${rawTypeExpression}])`;
       // const type = this.unwrapType(typeExpression);
-      const typeDeclaration = `${exports}class ${node.name} {
+      const options = this.options?.generateOptions?.(node);
+      const decorators = options?.decorators !== undefined
+        ? `${options.decorators}\n`
+        : "";
+      const typeDeclaration = `${decorators}${exports}class ${node.name} {
   public constructor(
   ${members.map((entry) => `  public ${entry},`).join("\n")}
   ) {}
