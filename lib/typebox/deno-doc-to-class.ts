@@ -173,45 +173,43 @@ export class DenoDocToClass {
     ].join("\n");
   }
 
+  private methodMember(methodDef: LiteralMethodDef): [string, string, boolean] {
+    const { name, optional } = methodDef;
+    return [name, "", optional];
+    // const typeString = `${methodDef.typeParams.length > 0 ? `<>` : ""}(${
+    //   methodDef.params
+    //     .map((paramDef) => `${paramDef.tsType?.repr ?? "null"}`)
+    //     .join(", ")
+    // }) => ${methodDef.returnType?.repr ?? "void"}`;
+    // return [name, typeString, optional];
+  }
+
   private membersFromDefs(
     propertyDefs: LiteralPropertyDef[],
-    _methodDefs: LiteralMethodDef[],
+    methodDefs: LiteralMethodDef[],
     _indexSignatureDefs: InterfaceIndexSignatureDef[],
     constructorDefs?: ClassConstructorDef[],
-  ): Array<[string, string]> {
+  ): Array<[string, string, boolean]> {
     return [
       ...propertyDefs
         .filter((member) => member.tsType?.kind !== "indexedAccess")
-        .map((property): [string, string] => [
+        .map((property): [string, string, boolean] => [
           property.name,
           property.tsType?.repr ?? "",
+          property.optional,
         ]),
-      // TODO: Reimplement methodDefs.
-      // ...methodDefs.map((method) =>
-      //   `${method.name}: ${
-      //     this.collect(
-      //       {
-      //         repr: "",
-      //         kind: "fnOrConstructor",
-      //         fnOrConstructor: {
-      //           constructor: false,
-      //           params: method.params,
-      //           typeParams: method.typeParams,
-      //           tsType: method.returnType!,
-      //         },
-      //       } satisfies TsTypeFnOrConstructorDef,
-      //     )
-      //   }`
-      // ),
-      //
+      ...methodDefs
+        .filter((methodDef) => methodDef.kind === "method")
+        .map((methodDef) => this.methodMember(methodDef)),
       ...(constructorDefs?.slice(0, 1).flatMap((constructorDef) =>
         constructorDef.params
           // Only public constructor params are included in the plain object.
           .filter((param) => param.accessibility === "public")
-          .map((param): [string, string] => [
+          .map((param): [string, string, boolean] => [
             //  Why is name not a property of param?
             (param as { name: string }).name,
             param.tsType?.repr ?? "",
+            false,
           ])
           .filter((constructorDef) => constructorDef !== undefined)
       ) ?? []),
@@ -265,8 +263,11 @@ export class DenoDocToClass {
       const typeDeclaration = `${decorators}${exports}class ${node.name} {
 ${
         members
-          .map(([memberName, memberType]) =>
-            `  public ${memberName}: ${memberType};\n`
+          .map(
+            ([memberName, memberType, memberOptional]) =>
+              `  public ${memberName}${
+                memberOptional ? "?" : ""
+              }: ${memberType};\n`,
           )
           .join("")
       }

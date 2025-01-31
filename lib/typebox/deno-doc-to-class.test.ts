@@ -33,8 +33,8 @@ Deno.test("DenoDocToClass", async (t) => {
     const expected = "class a0 {\n" +
       "  public p1: ;\n" +
       "  public p2: string;\n" +
-      "  public p3: ;\n" +
-      "  public p4: number;\n" +
+      "  public p3?: ;\n" +
+      "  public p4?: number;\n" +
       "  public p5: ;\n" +
       "\n" +
       "  public constructor(data: a0) {\n" +
