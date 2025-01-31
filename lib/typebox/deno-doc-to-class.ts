@@ -173,20 +173,8 @@ export class DenoDocToClass {
     ].join("\n");
   }
 
-  private methodMember(methodDef: LiteralMethodDef): [string, string, boolean] {
-    const { name, optional } = methodDef;
-    return [name, "", optional];
-    // const typeString = `${methodDef.typeParams.length > 0 ? `<>` : ""}(${
-    //   methodDef.params
-    //     .map((paramDef) => `${paramDef.tsType?.repr ?? "null"}`)
-    //     .join(", ")
-    // }) => ${methodDef.returnType?.repr ?? "void"}`;
-    // return [name, typeString, optional];
-  }
-
   private membersFromDefs(
     propertyDefs: LiteralPropertyDef[],
-    methodDefs: LiteralMethodDef[],
     _indexSignatureDefs: InterfaceIndexSignatureDef[],
     constructorDefs?: ClassConstructorDef[],
   ): Array<[string, string, boolean]> {
@@ -198,9 +186,6 @@ export class DenoDocToClass {
           property.tsType?.repr ?? "",
           property.optional,
         ]),
-      ...methodDefs
-        .filter((methodDef) => methodDef.kind === "method")
-        .map((methodDef) => this.methodMember(methodDef)),
       ...(constructorDefs?.slice(0, 1).flatMap((constructorDef) =>
         constructorDef.params
           // Only public constructor params are included in the plain object.
@@ -221,7 +206,6 @@ export class DenoDocToClass {
   ): IterableIterator<string> {
     const members = this.membersFromDefs(
       node.typeLiteral.properties,
-      node.typeLiteral.methods,
       node.typeLiteral.indexSignatures,
     );
     yield* `Type.Object(${members})`;
@@ -245,7 +229,6 @@ export class DenoDocToClass {
       const exports = node.declarationKind === "export" ? "export " : "";
       const members = this.membersFromDefs(
         node.interfaceDef.properties,
-        node.interfaceDef.methods,
         node.interfaceDef.indexSignatures,
       );
       if (members.length === 0) {
@@ -472,7 +455,6 @@ ${
       const exports = node.declarationKind === "export" ? "export " : "";
       // const members = this.membersFromDefs(
       //   node.classDef.properties as unknown as LiteralPropertyDef[],
-      //   node.classDef.methods as unknown as LiteralMethodDef[],
       //   node.classDef.indexSignatures,
       //   node.classDef.constructors,
       // );

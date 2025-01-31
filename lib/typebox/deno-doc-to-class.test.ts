@@ -28,8 +28,6 @@ Deno.test("DenoDocToClass", async (t) => {
     const nodes = await readDocNodes("interfacedecl.ts");
     generator.generate(sourceFile, nodes);
     const actual = sourceFile.getText();
-
-    // TODO: Reimplement methodDefs.
     const expected = "class a0 {\n" +
       "  public p1: ;\n" +
       "  public p2: string;\n" +
