@@ -183,7 +183,14 @@ export class DenoDocToClass {
         .filter((member) => member.tsType?.kind !== "indexedAccess")
         .map((property): [string, string, boolean] => [
           property.name,
-          property.tsType?.repr ?? "",
+          (() => {
+            if (property.name === "bar") {
+              console.dir(property, { depth: null }); // TODO: Remove.
+            }
+
+            // TODO: Write a custom type renderer :O
+            return property.tsType?.repr ?? "";
+          })(),
           property.optional,
         ]),
       ...(constructorDefs?.slice(0, 1).flatMap((constructorDef) =>

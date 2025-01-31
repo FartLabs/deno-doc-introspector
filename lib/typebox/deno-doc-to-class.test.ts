@@ -47,22 +47,24 @@ Deno.test("DenoDocToClass", async (t) => {
     assertEquals(actual, expected);
   });
 
-  // await t.step("interface-nested.ts", async () => {
-  //   const sourceFile = project.createSourceFile("interface-nested.ts");
-  //   const nodes = await readDocNodes("interface-nested.ts");
-  //   generator.generate(sourceFile, nodes);
-  //   const actual = sourceFile.getText();
-  //   const expected = 'import { Type, Static } from "@sinclair/typebox";\n' +
-  //     "\n" +
-  //     "type Foo = Static<typeof Foo>\n" +
-  //     "const Foo = Type.Object({\n" +
-  //     "bar: Type.Object({\n" +
-  //     "baz: Type.String()\n" +
-  //     "})\n" +
-  //     "})\n";
+  await t.step("interface-nested.ts", async () => {
+    const sourceFile = project.createSourceFile("interface-nested.ts");
+    const nodes = await readDocNodes("interface-nested.ts");
+    generator.generate(sourceFile, nodes);
+    const actual = sourceFile.getText();
+    console.log(actual, { actual });
+    const expected = "";
+    // 'import { Type, Static } from "@sinclair/typebox";\n' +
+    // "\n" +
+    // "type Foo = Static<typeof Foo>\n" +
+    // "const Foo = Type.Object({\n" +
+    // "bar: Type.Object({\n" +
+    // "baz: Type.String()\n" +
+    // "})\n" +
+    // "})\n";
 
-  //   assertEquals(actual, expected);
-  // });
+    assertEquals(actual, expected);
+  });
 
   // await t.step("interface-extends.ts", async () => {
   //   const sourceFile = project.createSourceFile("interface-extends.ts");
