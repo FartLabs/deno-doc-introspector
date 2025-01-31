@@ -45,8 +45,7 @@ export class DenoDocToClass {
     | DocNodeClass
     | null = null;
 
-  public constructor(public options?: DocNodesToClassOptions) {
-  }
+  public constructor(public options?: DocNodesToClassOptions) {}
 
   private isRecursiveType(
     node: DocNodeInterface | DocNodeTypeAlias | DocNodeClass,
@@ -54,20 +53,22 @@ export class DenoDocToClass {
     return checkRecursive(node);
   }
 
-  private unwrapModifier(type: string) {
-    for (let i = 0; i < type.length; i++) {
-      if (type[i] === "(") {
-        return type.slice(i + 1, type.length - 1);
+  private unwrapModifier(typeString: string) {
+    for (let i = 0; i < typeString.length; i++) {
+      if (typeString[i] === "(") {
+        return typeString.slice(i + 1, typeString.length - 1);
       }
     }
 
-    return type;
+    return typeString;
   }
 
   private unwrapType(type: string): string {
     if (type.startsWith("Type.ReadonlyOptional")) {
       return `Type.ReadonlyOptional(${
-        this.unwrapType(this.unwrapModifier(type))
+        this.unwrapType(
+          this.unwrapModifier(type),
+        )
       })`;
     }
 
@@ -88,16 +89,12 @@ export class DenoDocToClass {
   }
 
   private *tupleTypeNode(node: TsTypeTupleDef): IterableIterator<string> {
-    const types = node.tuple
-      .map((type) => this.collect(type))
-      .join(",\n");
+    const types = node.tuple.map((type) => this.collect(type)).join(",\n");
     yield `Type.Tuple([\n${types}\n])`;
   }
 
   private *unionTypeNode(node: TsTypeUnionDef): IterableIterator<string> {
-    const types = node.union
-      .map((type) => this.collect(type))
-      .join(",\n");
+    const types = node.union.map((type) => this.collect(type)).join(",\n");
     yield `Type.Union([\n${types}\n])`;
   }
 
@@ -137,11 +134,10 @@ export class DenoDocToClass {
     node: TsTypeFnOrConstructorDef,
   ): IterableIterator<string> {
     const parameters = node.fnOrConstructor.params
-      .map((
-        parameter,
-      ) => (parameter.kind === "rest"
-        ? `...Type.Rest(${this.collect(parameter.tsType)})`
-        : this.collect(parameter.tsType))
+      .map((parameter) =>
+        parameter.kind === "rest"
+          ? `...Type.Rest(${this.collect(parameter.tsType)})`
+          : this.collect(parameter.tsType)
       )
       .join(", ");
     const returns = node.fnOrConstructor.tsType
@@ -179,44 +175,46 @@ export class DenoDocToClass {
 
   private membersFromDefs(
     propertyDefs: LiteralPropertyDef[],
-    methodDefs: LiteralMethodDef[],
+    _methodDefs: LiteralMethodDef[],
     _indexSignatureDefs: InterfaceIndexSignatureDef[],
     constructorDefs?: ClassConstructorDef[],
-  ): string[] {
+  ): Array<[string, string]> {
     return [
       ...propertyDefs
         .filter((member) => member.tsType?.kind !== "indexedAccess")
-        .map((property) => `${property.name}: ${property.tsType?.repr}`),
-      ...methodDefs.map((method) =>
-        `${method.name}: ${
-          this.collect(
-            {
-              repr: "",
-              kind: "fnOrConstructor",
-              fnOrConstructor: {
-                constructor: false,
-                params: method.params,
-                typeParams: method.typeParams,
-                tsType: method.returnType!,
-              },
-            } satisfies TsTypeFnOrConstructorDef,
-          )
-        }`
-      ),
-      ...constructorDefs
-        ?.slice(0, 1)
-        .flatMap((constructorDef) =>
-          constructorDef.params
-            // Only public constructor params are included in the plain object.
-            .filter((param) => param.accessibility === "public")
-            .map((param) =>
-              //  Why is name not a property of param?
-              `${(param as { name: string }).name}: ${
-                this.collect(param.tsType)
-              }`
-            )
-            .filter((constructorDef) => constructorDef !== undefined)
-        ) ?? [],
+        .map((property): [string, string] => [
+          property.name,
+          property.tsType?.repr ?? "",
+        ]),
+      // TODO: Reimplement methodDefs.
+      // ...methodDefs.map((method) =>
+      //   `${method.name}: ${
+      //     this.collect(
+      //       {
+      //         repr: "",
+      //         kind: "fnOrConstructor",
+      //         fnOrConstructor: {
+      //           constructor: false,
+      //           params: method.params,
+      //           typeParams: method.typeParams,
+      //           tsType: method.returnType!,
+      //         },
+      //       } satisfies TsTypeFnOrConstructorDef,
+      //     )
+      //   }`
+      // ),
+      //
+      ...(constructorDefs?.slice(0, 1).flatMap((constructorDef) =>
+        constructorDef.params
+          // Only public constructor params are included in the plain object.
+          .filter((param) => param.accessibility === "public")
+          .map((param): [string, string] => [
+            //  Why is name not a property of param?
+            (param as { name: string }).name,
+            param.tsType?.repr ?? "",
+          ])
+          .filter((constructorDef) => constructorDef !== undefined)
+      ) ?? []),
     ];
   }
 
@@ -242,12 +240,20 @@ export class DenoDocToClass {
     // const heritage = node.interfaceDef.extends
     //   .map((node) => this.collect(node));
     if (node.interfaceDef.typeParams.length === 0) {
+      const nodeOptions = this.options?.generateOptions?.(node);
+      const decorators = nodeOptions?.decorators !== undefined
+        ? `${nodeOptions.decorators}\n`
+        : "";
       const exports = node.declarationKind === "export" ? "export " : "";
       const members = this.membersFromDefs(
         node.interfaceDef.properties,
         node.interfaceDef.methods,
         node.interfaceDef.indexSignatures,
       );
+      if (members.length === 0) {
+        return `${decorators}${exports}class ${node.name} {}`;
+      }
+
       // const rawTypeExpression = this.isRecursiveType(node)
       //   ? `Type.Recursive(This => Type.Object(${members}))`
       //   : `Type.Object(${members})`;
@@ -255,14 +261,22 @@ export class DenoDocToClass {
       //   ? rawTypeExpression
       //   : `Type.Composite([${heritage.join(", ")}, ${rawTypeExpression}])`;
       // const type = this.unwrapType(typeExpression);
-      const options = this.options?.generateOptions?.(node);
-      const decorators = options?.decorators !== undefined
-        ? `${options.decorators}\n`
-        : "";
+
       const typeDeclaration = `${decorators}${exports}class ${node.name} {
-  public constructor(
-  ${members.map((entry) => `  public ${entry},`).join("\n")}
-  ) {}
+${
+        members
+          .map(([memberName, memberType]) =>
+            `  public ${memberName}: ${memberType};\n`
+          )
+          .join("")
+      }
+  public constructor(data: ${node.name}) {
+${
+        members
+          .map(([memberName]) => `    this.${memberName} = data.${memberName};`)
+          .join("\n")
+      }
+  }
 }`;
       yield typeDeclaration;
     }
@@ -329,9 +343,7 @@ export class DenoDocToClass {
     yield `Type.Extends(${checkType}, ${extendsType}, ${trueType}, ${falseType})`;
   }
 
-  private *typeReferenceNode(
-    node: TsTypeTypeRefDef,
-  ): IterableIterator<string> {
+  private *typeReferenceNode(node: TsTypeTypeRefDef): IterableIterator<string> {
     const name = node.typeRef.typeName;
     const args = node.typeRef.typeParams !== undefined
       ? `(${
@@ -447,8 +459,7 @@ export class DenoDocToClass {
 
   private *functionDeclaration(
     _node: DocNodeFunction,
-  ): IterableIterator<string> {
-  }
+  ): IterableIterator<string> {}
 
   private *classDeclaration(node: DocNodeClass): IterableIterator<string> {
     const isRecursiveType = this.isRecursiveType(node);
