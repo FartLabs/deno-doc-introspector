@@ -63,22 +63,27 @@ Deno.test("DenoDocToClass", async (t) => {
     assertEquals(actual, expected);
   });
 
-  // await t.step("interface-extends.ts", async () => {
-  //   const sourceFile = project.createSourceFile("interface-extends.ts");
-  //   const nodes = await readDocNodes("interface-extends.ts");
-  //   generator.generate(sourceFile, nodes);
-  //   const actual = sourceFile.getText();
-  //   const expected = 'import { Type, Static } from "@sinclair/typebox";\n' +
-  //     "\n" +
-  //     "type Bar = Static<typeof Bar>\n" +
-  //     "const Bar = Type.Composite([Foo, Type.Object({\n" +
-  //     "bar: Type.String()\n" +
-  //     "})])\n" +
-  //     "type Foo = Static<typeof Foo>\n" +
-  //     "const Foo = Type.Object({\n" +
-  //     "foo: Type.String()\n" +
-  //     "})\n";
+  await t.step("interface-extends.ts", async () => {
+    const sourceFile = project.createSourceFile("interface-extends.ts");
+    const nodes = await readDocNodes("interface-extends.ts");
+    generator.generate(sourceFile, nodes);
+    const actual = sourceFile.getText();
+    console.log(actual, { actual });
+    const expected = "class Bar extends Foo {\n" +
+      "  public bar: string;\n" +
+      "\n" +
+      "  public constructor(data: Bar) {\n" +
+      "    this.bar = data.bar;\n" +
+      "  }\n" +
+      "}\n" +
+      "class Foo {\n" +
+      "  public foo: string;\n" +
+      "\n" +
+      "  public constructor(data: Foo) {\n" +
+      "    this.foo = data.foo;\n" +
+      "  }\n" +
+      "}\n";
 
-  //   assertEquals(actual, expected);
-  // });
+    assertEquals(actual, expected);
+  });
 });

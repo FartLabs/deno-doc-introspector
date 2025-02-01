@@ -253,7 +253,12 @@ export class DenoDocToClass {
       //   : `Type.Composite([${heritage.join(", ")}, ${rawTypeExpression}])`;
       // const type = this.unwrapType(typeExpression);
 
-      const typeDeclaration = `${decorators}${exports}class ${node.name} {
+      const extendsString = node.interfaceDef.extends
+        .map((tsTypeDef) => renderTsTypeDef(tsTypeDef))
+        .join(", ");
+      const typeDeclaration = `${decorators}${exports}class ${node.name}${
+        extendsString.length > 0 ? ` extends ${extendsString}` : ""
+      } {
 ${
         members
           .map(
