@@ -7,7 +7,6 @@ import type {
   DocNodeInterface,
   DocNodeTypeAlias,
   InterfaceIndexSignatureDef,
-  LiteralMethodDef,
   LiteralPropertyDef,
   TsTypeArrayDef,
   TsTypeConditionalDef,
@@ -27,6 +26,7 @@ import type {
 } from "@deno/doc";
 import type { SourceFile } from "ts-morph";
 import { checkRecursive } from "#/lib/deno-doc/check-recursive.ts";
+import { renderTsTypeDef } from "#/lib/deno-doc/ts-type.ts";
 
 export interface DocNodesToClassOptions {
   generateOptions?: (
@@ -181,28 +181,32 @@ export class DenoDocToClass {
     return [
       ...propertyDefs
         .filter((member) => member.tsType?.kind !== "indexedAccess")
-        .map((property): [string, string, boolean] => [
-          property.name,
-          (() => {
-            if (property.name === "bar") {
-              console.dir(property, { depth: null }); // TODO: Remove.
-            }
-
-            // TODO: Write a custom type renderer :O
-            return property.tsType?.repr ?? "";
-          })(),
-          property.optional,
-        ]),
+        .map((property): [string, string, boolean] => {
+          return [
+            property.name,
+            property.tsType !== undefined
+              ? renderTsTypeDef(property.tsType)
+              : "",
+            property.optional,
+          ];
+        }),
       ...(constructorDefs?.slice(0, 1).flatMap((constructorDef) =>
         constructorDef.params
           // Only public constructor params are included in the plain object.
           .filter((param) => param.accessibility === "public")
-          .map((param): [string, string, boolean] => [
-            //  Why is name not a property of param?
-            (param as { name: string }).name,
-            param.tsType?.repr ?? "",
-            false,
-          ])
+          .map((param): [string, string, boolean] => {
+            if (param.tsType === undefined) {
+              throw new Error("Expected defined tsType.");
+            }
+
+            return [
+              // Why is name not a property of param?
+              (param as { name: string }).name,
+              param.tsType !== undefined ? renderTsTypeDef(param.tsType) : "",
+              // Why is optional not a property of param?
+              (param as { optional: boolean })?.optional, // ?? false,
+            ];
+          })
           .filter((constructorDef) => constructorDef !== undefined)
       ) ?? []),
     ];

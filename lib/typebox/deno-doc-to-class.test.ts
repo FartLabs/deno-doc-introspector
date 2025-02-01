@@ -52,16 +52,13 @@ Deno.test("DenoDocToClass", async (t) => {
     const nodes = await readDocNodes("interface-nested.ts");
     generator.generate(sourceFile, nodes);
     const actual = sourceFile.getText();
-    console.log(actual, { actual });
-    const expected = "";
-    // 'import { Type, Static } from "@sinclair/typebox";\n' +
-    // "\n" +
-    // "type Foo = Static<typeof Foo>\n" +
-    // "const Foo = Type.Object({\n" +
-    // "bar: Type.Object({\n" +
-    // "baz: Type.String()\n" +
-    // "})\n" +
-    // "})\n";
+    const expected = "class Foo {\n" +
+      "  public bar: { baz: string };\n" +
+      "\n" +
+      "  public constructor(data: Foo) {\n" +
+      "    this.bar = data.bar;\n" +
+      "  }\n" +
+      "}\n";
 
     assertEquals(actual, expected);
   });
