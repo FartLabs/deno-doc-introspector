@@ -28,9 +28,14 @@ import type { SourceFile } from "ts-morph";
 import { checkRecursive } from "#/lib/deno-doc/check-recursive.ts";
 import { renderTsTypeDef } from "#/lib/deno-doc/ts-type.ts";
 
+export type DocNodeStructure =
+  | DocNodeInterface
+  | DocNodeTypeAlias
+  | DocNodeClass;
+
 export interface DocNodesToClassOptions {
   generateOptions?: (
-    node: DocNodeInterface | DocNodeTypeAlias | DocNodeClass,
+    node: DocNodeStructure,
   ) => DocNodeToClassOptions | undefined;
 }
 
@@ -39,17 +44,11 @@ export interface DocNodeToClassOptions {
 }
 
 export class DenoDocToClass {
-  private recursiveDeclaration:
-    | DocNodeTypeAlias
-    | DocNodeInterface
-    | DocNodeClass
-    | null = null;
+  private recursiveDeclaration: DocNodeStructure | null = null;
 
   public constructor(public options?: DocNodesToClassOptions) {}
 
-  private isRecursiveType(
-    node: DocNodeInterface | DocNodeTypeAlias | DocNodeClass,
-  ): boolean {
+  private isRecursiveType(node: DocNodeStructure): boolean {
     return checkRecursive(node);
   }
 
