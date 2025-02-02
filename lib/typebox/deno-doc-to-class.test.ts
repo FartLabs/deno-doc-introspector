@@ -68,11 +68,11 @@ Deno.test("DenoDocToClass", async (t) => {
     const nodes = await readDocNodes("interface-extends.ts");
     generator.generate(sourceFile, nodes);
     const actual = sourceFile.getText();
-    console.log(actual, { actual });
     const expected = "class Bar extends Foo {\n" +
       "  public bar: string;\n" +
       "\n" +
       "  public constructor(data: Bar) {\n" +
+      "    super(data);\n" +
       "    this.bar = data.bar;\n" +
       "  }\n" +
       "}\n" +

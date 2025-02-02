@@ -18,7 +18,7 @@ export type DocNodeStructure =
 
 export interface DocNodesToClassOptions {
   generateOptions?: (
-    node: DocNodeStructure
+    node: DocNodeStructure,
   ) => DocNodeToClassOptions | undefined;
 }
 
@@ -32,7 +32,7 @@ export class DenoDocToClass {
   private membersFromDefs(
     propertyDefs: LiteralPropertyDef[],
     _indexSignatureDefs: InterfaceIndexSignatureDef[],
-    constructorDefs?: ClassConstructorDef[]
+    constructorDefs?: ClassConstructorDef[],
   ): Array<{ name: string; type: string; optional: boolean }> {
     const propertyMembers = propertyDefs
       .filter((member) => member.tsType?.kind !== "indexedAccess")
@@ -51,14 +51,12 @@ export class DenoDocToClass {
               throw new Error("Expected defined tsType.");
             }
 
-            // Type assertion is still needed if the types don't actually have these properties
             const paramWithName = param as { name: string };
             const paramWithOptional = param as { optional: boolean };
-
             return {
               name: paramWithName.name,
               type: renderTsTypeDef(param.tsType),
-              optional: paramWithOptional.optional ?? false, // Provide a default value
+              optional: paramWithOptional.optional ?? false,
             };
           })
       ) ?? [];
@@ -67,18 +65,17 @@ export class DenoDocToClass {
   }
 
   private *interfaceDeclaration(
-    node: DocNodeInterface
+    node: DocNodeInterface,
   ): IterableIterator<string> {
     if (node.interfaceDef.typeParams.length === 0) {
       const nodeOptions = this.options?.generateOptions?.(node);
-      const decorators =
-        nodeOptions?.decorators !== undefined
-          ? `${nodeOptions.decorators}\n`
-          : "";
+      const decorators = nodeOptions?.decorators !== undefined
+        ? `${nodeOptions.decorators}\n`
+        : "";
       const exports = node.declarationKind === "export" ? "export " : "";
       const members = this.membersFromDefs(
         node.interfaceDef.properties,
-        node.interfaceDef.indexSignatures
+        node.interfaceDef.indexSignatures,
       );
       if (members.length === 0) {
         return `${decorators}${exports}class ${node.name} {}`;
@@ -86,27 +83,32 @@ export class DenoDocToClass {
       const extendsString = node.interfaceDef.extends
         .map((tsTypeDef) => renderTsTypeDef(tsTypeDef))
         .join(", ");
-      const typeDeclaration = `${decorators}${exports}class ${node.name}${
+      yield `${decorators}${exports}class ${node.name}${
         extendsString.length > 0 ? ` extends ${extendsString}` : ""
-      } {
-${members
-  .map(
-    (member) =>
-      `  public ${member.name}${member.optional ? "?" : ""}: ${member.type};\n`
-  )
-  .join("")}
-  public constructor(data: ${node.name}) {
-${members
-  .map((member) => `    this.${member.name} = data.${member.name};`)
-  .join("\n")}
+      } {\n` +
+        `${
+          members
+            .map(
+              (member) =>
+                `  public ${member.name}${
+                  member.optional ? "?" : ""
+                }: ${member.type};`,
+            )
+            .join("\n")
+        }\n\n` +
+        `  public constructor(data: ${node.name}) {\n` +
+        `${extendsString.length > 0 ? "    super(data);\n" : ""}${
+          members
+            .map((member) => `    this.${member.name} = data.${member.name};`)
+            .join("\n")
+        }
   }
 }`;
-      yield typeDeclaration;
     }
   }
 
   private *typeAliasDeclaration(
-    node: DocNodeTypeAlias
+    node: DocNodeTypeAlias,
   ): IterableIterator<string> {
     if (node.typeAliasDef.typeParams.length > 0) {
       yield "todo";
@@ -126,7 +128,7 @@ ${members
   }
 
   private *visit(
-    node: DocNode | TsTypeDef | undefined
+    node: DocNode | TsTypeDef | undefined,
   ): IterableIterator<string> {
     if (node === undefined) {
       return;
@@ -136,9 +138,11 @@ ${members
       case "interface": {
         return yield* this.interfaceDeclaration(node);
       }
+
       case "typeAlias": {
         return yield* this.typeAliasDeclaration(node);
       }
+
       case "class": {
         return yield* this.classDeclaration(node);
       }
