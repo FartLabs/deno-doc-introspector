@@ -33,39 +33,37 @@ export class DenoDocToClass {
     propertyDefs: LiteralPropertyDef[],
     _indexSignatureDefs: InterfaceIndexSignatureDef[],
     constructorDefs?: ClassConstructorDef[]
-  ): Array<[string, string, boolean]> {
-    return [
-      ...propertyDefs
-        .filter((member) => member.tsType?.kind !== "indexedAccess")
-        .map((property): [string, string, boolean] => {
-          return [
-            property.name,
-            property.tsType !== undefined
-              ? renderTsTypeDef(property.tsType)
-              : "",
-            property.optional,
-          ];
-        }),
-      ...(constructorDefs?.slice(0, 1).flatMap((constructorDef) =>
+  ): Array<{ name: string; type: string; optional: boolean }> {
+    const propertyMembers = propertyDefs
+      .filter((member) => member.tsType?.kind !== "indexedAccess")
+      .map((property): { name: string; type: string; optional: boolean } => ({
+        name: property.name,
+        type: property.tsType ? renderTsTypeDef(property.tsType) : "",
+        optional: property.optional,
+      }));
+
+    const constructorMembers =
+      constructorDefs?.slice(0, 1).flatMap((constructorDef) =>
         constructorDef.params
-          // Only public constructor params are included in the plain object.
           .filter((param) => param.accessibility === "public")
-          .map((param): [string, string, boolean] => {
-            if (param.tsType === undefined) {
+          .map((param): { name: string; type: string; optional: boolean } => {
+            if (!param.tsType) {
               throw new Error("Expected defined tsType.");
             }
 
-            return [
-              // Why is name not a property of param?
-              (param as { name: string }).name,
-              param.tsType !== undefined ? renderTsTypeDef(param.tsType) : "",
-              // Why is optional not a property of param?
-              (param as { optional: boolean })?.optional, // ?? false,
-            ];
+            // Type assertion is still needed if the types don't actually have these properties
+            const paramWithName = param as { name: string };
+            const paramWithOptional = param as { optional: boolean };
+
+            return {
+              name: paramWithName.name,
+              type: renderTsTypeDef(param.tsType),
+              optional: paramWithOptional.optional ?? false, // Provide a default value
+            };
           })
-          .filter((constructorDef) => constructorDef !== undefined)
-      ) ?? []),
-    ];
+      ) ?? [];
+
+    return [...propertyMembers, ...constructorMembers];
   }
 
   private *interfaceDeclaration(
@@ -93,13 +91,13 @@ export class DenoDocToClass {
       } {
 ${members
   .map(
-    ([memberName, memberType, memberOptional]) =>
-      `  public ${memberName}${memberOptional ? "?" : ""}: ${memberType};\n`
+    (member) =>
+      `  public ${member.name}${member.optional ? "?" : ""}: ${member.type};\n`
   )
   .join("")}
   public constructor(data: ${node.name}) {
 ${members
-  .map(([memberName]) => `    this.${memberName} = data.${memberName};`)
+  .map((member) => `    this.${member.name} = data.${member.name};`)
   .join("\n")}
   }
 }`;
